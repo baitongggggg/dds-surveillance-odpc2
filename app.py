@@ -53,6 +53,14 @@ def calc_threshold(train_series):
     return th
 
 
+def risk_sort_key(d):
+    """เรียงลำดับความเสี่ยง: เกินเกณฑ์ก่อน -> อัตราส่วนเกินเกณฑ์มากสุด -> จำนวนรายที่เกินเกณฑ์มากสุด"""
+    fc_i = to_int(d["forecast"])
+    th_i = to_int(d["threshold"])
+    ratio = (fc_i / th_i) if th_i > 0 else float(fc_i)
+    return (1 if d["is_flagged"] else 0, ratio, fc_i - th_i, fc_i)
+
+
 DISEASE_ACTION_GUIDE = {
     "02": "ตรวจเช็กการกระจุกตัวรายอำเภอ/โรงเรียน/โรงงาน ตรวจสอบแหล่งน้ำดื่ม-อาหาร และแจ้งทีม SRRT พื้นที่เฝ้าระวังสุขาภิบาล",
     "15": "เฝ้าระวังการระบาดเป็นกลุ่มก้อนในโรงเรียน/สถานที่แออัด ตรวจผล Lab ยืนยันสายพันธุ์ และเร่งสื่อสารป้องกันในกลุ่มเสี่ยง",
@@ -162,12 +170,16 @@ h3 { font-size: 0.95rem !important; font-weight: 600 !important; color: #334155 
     background: #ffffff; border: 1px solid #fecdd3; border-left: 4px solid #e11d48;
     border-radius: 10px; padding: 13px 15px; margin-bottom: 10px;
 }
-.action-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.action-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
 .action-rank {
     background: #fff1f2; color: #be123c; font-size: 11.5px;
-    font-weight: 600; padding: 2px 9px; border-radius: 999px;
+    font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
 }
 .action-name { font-size: 15px; font-weight: 700; color: #0f172a; }
+.action-prov {
+    display: inline-block; background: #f1f5f9; color: #334155;
+    font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 6px; margin-left: 6px;
+}
 .action-stats { font-size: 12.5px; color: #334155; margin-bottom: 7px; }
 .action-guide {
     background: #f8fafc; border-radius: 8px; padding: 8px 10px;
@@ -288,11 +300,11 @@ def sync_to_registry(payload):
         combined.to_csv(CSV_REGISTRY, index=False, encoding="utf-8-sig")
 
 
-def load_registry(prov_code, disease_code_filter=None):
+def load_registry(prov_code=None, disease_code_filter=None):
     engine = get_db_engine()
     if engine:
         ensure_table(engine)
-        df_r = pd.read_sql("SELECT * FROM tracking_registry ORDER BY target_week DESC, disease_code ASC", engine)
+        df_r = pd.read_sql("SELECT * FROM tracking_registry ORDER BY target_week DESC, province_code ASC, disease_code ASC", engine)
     elif os.path.exists(CSV_REGISTRY):
         df_r = pd.read_csv(CSV_REGISTRY, dtype={"province_code": str, "disease_code": str})
     else:
@@ -301,7 +313,8 @@ def load_registry(prov_code, disease_code_filter=None):
         return df_r
     df_r["province_code"] = df_r["province_code"].astype(str).str.strip()
     df_r["disease_code"] = df_r["disease_code"].astype(str).str.strip().str.zfill(2)
-    df_r = df_r[df_r["province_code"] == str(prov_code)].copy()
+    if prov_code is not None:
+        df_r = df_r[df_r["province_code"] == str(prov_code)].copy()
     if disease_code_filter is not None:
         df_r = df_r[df_r["disease_code"] == str(disease_code_filter).zfill(2)].copy()
     return df_r
@@ -411,7 +424,7 @@ def predict_for_date(weekly_df, cutoff_str):
                 ]
             })
 
-        top_alerts = sorted([d for d in diseases if d["is_flagged"]], key=lambda x: x["excess_ratio"], reverse=True)[:3]
+        top_alerts = sorted([d for d in diseases if d["is_flagged"]], key=risk_sort_key, reverse=True)[:3]
         provinces.append({
             "province_code": p_code,
             "province_name": p_name,
@@ -440,7 +453,7 @@ def clean_str(val):
 
 
 # =========================================================
-# 3. แถบเมนูซ้ายมือ (เลือกจังหวัด + เลือกโรค + เปลี่ยนวันตัดข้อมูล)
+# 3. แถบเมนูซ้ายมือ (เลือกทุกจังหวัด / รายจังหวัด + เลือกโรค + เปลี่ยนวันที่)
 # =========================================================
 latest_json, weekly_df = load_files()
 min_date = (weekly_df["week_start"].min() + pd.Timedelta(weeks=4)).date()
@@ -457,19 +470,38 @@ with st.sidebar:
     payload = latest_json if picked_str == latest_json["meta"]["cutoff_date"] else predict_for_date(weekly_df, picked_str)
     sync_to_registry(payload)
 
-    # ตัวเลือกที่ 1: เลือกจังหวัด
+    # ตัวเลือกที่ 1: เลือก "ทุกจังหวัด" หรือเจาะจงรายจังหวัด
+    total_flagged_region = sum(
+        1 for p in payload["provinces"] for d in p["all_diseases"] if d["is_flagged"]
+    )
     prov_map = {
-        f"จ.{p['province_name']} ({p['province_code']})  •  เฝ้าระวัง {p['alert_count']} โรค": p
-        for p in payload["provinces"]
+        f"ทุกจังหวัด (ภาพรวม {len(payload['provinces'])} จังหวัด)  •  เตือน {total_flagged_region} รายการ": None
     }
-    prov_label = st.selectbox("1. เลือกจังหวัด", list(prov_map.keys()))
-    prov = prov_map[prov_label]
+    for p in payload["provinces"]:
+        prov_map[f"จ.{p['province_name']} ({p['province_code']})  •  เฝ้าระวัง {p['alert_count']} โรค"] = p
 
-    # ตัวเลือกที่ 2: เลือกโรค (ดูภาพรวมทุกโรค หรือเจาะจงทีละโรค)
+    prov_label = st.selectbox("1. เลือกจังหวัด", list(prov_map.keys()))
+    selected_prov_obj = prov_map[prov_label]
+    is_all_prov = selected_prov_obj is None
+    selected_prov_code = None if is_all_prov else selected_prov_obj["province_code"]
+
+    # รวมรายการโรคตามจังหวัดที่เลือก เพื่อสร้างตัวเลือกโรคพร้อมจำนวนสัญญาณเตือน
+    scope_provinces = payload["provinces"] if is_all_prov else [selected_prov_obj]
+    scope_all_items = [d for p in scope_provinces for d in p["all_diseases"]]
+
+    # ตัวเลือกที่ 2: เลือกโรค
     disease_filter_map = {"ทุกโรค (ภาพรวม 3 โรคหลัก)": None}
-    for d_item in prov["all_diseases"]:
-        flag_dot = "🔴" if d_item["is_flagged"] else "🟢"
-        disease_filter_map[f"{flag_dot} {d_item['disease_code']} - {d_item['disease_name']}"] = d_item["disease_code"]
+    unique_codes = sorted(list({d["disease_code"] for d in scope_all_items}))
+    for d_code in unique_codes:
+        d_name = DISEASE_NAMES.get(d_code, d_code)
+        flagged_cnt = sum(1 for d in scope_all_items if d["disease_code"] == d_code and d["is_flagged"])
+        if is_all_prov:
+            dot = "🔴" if flagged_cnt > 0 else "🟢"
+            suffix = f" (เตือน {flagged_cnt} จว.)" if flagged_cnt > 0 else " (ปกติ)"
+        else:
+            dot = "🔴" if flagged_cnt > 0 else "🟢"
+            suffix = ""
+        disease_filter_map[f"{dot} {d_code} - {d_name}{suffix}"] = d_code
 
     selected_disease_label = st.selectbox("2. เลือกโรคที่ต้องการดู", list(disease_filter_map.keys()))
     selected_disease_code = disease_filter_map[selected_disease_label]
@@ -482,18 +514,24 @@ with st.sidebar:
         - **แถบสีเหลืองในกราฟ:** ยอด 1–2 สัปดาห์ล่าสุดที่อาจยังมีรายงานค้างส่ง
         """)
 
-
 meta = payload["meta"]
 
-# กรองรายการโรคและสัญญาณเตือนตามตัวเลือกโรคในแถบซ้าย
+# กรองและเรียงลำดับความเสี่ยงจากมากไปน้อย (อันดับ 1 อยู่บนสุดเสมอ)
 if selected_disease_code is None:
-    view_diseases = prov["all_diseases"]
-    view_alerts = prov["alerts"]
+    view_items = sorted(scope_all_items, key=risk_sort_key, reverse=True)
     disease_scope_text = "ทุกโรคในขอบเขต (3 โรค)"
 else:
-    view_diseases = [d for d in prov["all_diseases"] if d["disease_code"] == selected_disease_code]
-    view_alerts = [a for a in prov["alerts"] if a["disease_code"] == selected_disease_code]
-    disease_scope_text = view_diseases[0]["disease_name"] if view_diseases else selected_disease_code
+    view_items = sorted(
+        [d for d in scope_all_items if d["disease_code"] == selected_disease_code],
+        key=risk_sort_key,
+        reverse=True
+    )
+    disease_scope_text = DISEASE_NAMES.get(selected_disease_code, selected_disease_code)
+
+flagged_items = [d for d in view_items if d["is_flagged"]]
+top_alerts = flagged_items[:3]  # จัดอันดับสูงสุด 3 รายการที่ต้องระวังเป็นอันดับแรก
+
+area_title = f"ภาพรวมทุกจังหวัด ({len(payload['provinces'])} จังหวัด)" if is_all_prov else f"จังหวัด{selected_prov_obj['province_name']}"
 
 # =========================================================
 # 4. ส่วนหัวแดชบอร์ด
@@ -501,9 +539,9 @@ else:
 status_cls = "meta-tag-warn" if "เบื้องต้น" in str(meta["data_status"]) else "meta-tag"
 render_html(f"""
 <div class="top-header">
-    <div class="top-title">แดชบอร์ดชี้เป้าโรคที่ควรเฝ้าระวังสัปดาห์หน้า — จังหวัด{prov['province_name']}</div>
+    <div class="top-title">แดชบอร์ดชี้เป้าโรคที่ควรเฝ้าระวังสัปดาห์หน้า — {area_title}</div>
     <div class="meta-line">
-        <span class="meta-tag-blue">โรคที่เลือก: {disease_scope_text}</span>
+        <span class="meta-tag-blue">ขอบเขตโรค: {disease_scope_text}</span>
         <span class="meta-tag">รหัสรอบ: <b>{meta['run_id']}</b></span>
         <span class="meta-tag">สัปดาห์เป้าหมาย: <b>{meta['target_week']}</b></span>
         <span class="meta-tag">ตัดข้อมูลถึง: <b>{meta['cutoff_date']}</b></span>
@@ -520,40 +558,45 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 # =========================================================
-# แท็บ 1: แดชบอร์ดภาพรวม + กราฟเทียบเกณฑ์ + แนวทางรับมือ
+# แท็บ 1: แดชบอร์ดภาพรวม + จัดอันดับโรคที่ต้องระวังก่อน
 # =========================================================
 with tab1:
-    total_fc = sum(to_int(d["forecast"]) for d in view_diseases)
-    total_latest = sum(to_int(d["latest_cases"]) for d in view_diseases)
+    total_fc = sum(to_int(d["forecast"]) for d in view_items)
+    total_latest = sum(to_int(d["latest_cases"]) for d in view_items)
     diff_total = total_fc - total_latest
     diff_total_txt = f"+{diff_total:,} ราย จากสัปดาห์ล่าสุด" if diff_total >= 0 else f"{diff_total:,} ราย จากสัปดาห์ล่าสุด"
 
-    top_risk_name = view_alerts[0]["disease_name"] if view_alerts else "ยังไม่มีโรคเกินเกณฑ์"
-    top_risk_note = (
-        f"คาด {to_int(view_alerts[0]['forecast']):,} ราย (เกณฑ์ {to_int(view_alerts[0]['threshold']):,} ราย)"
-        if view_alerts else "สถานการณ์อยู่ในเกณฑ์ปกติ"
-    )
-    alert_color = "#be123c" if len(view_alerts) > 0 else "#15803d"
+    if top_alerts:
+        t1 = top_alerts[0]
+        top_risk_name = f"{t1['disease_name']}"
+        prov_prefix = f"จ.{t1['province_name']} • " if is_all_prov else ""
+        top_risk_note = f"{prov_prefix}คาด {to_int(t1['forecast']):,} ราย (เกณฑ์ {to_int(t1['threshold']):,} ราย)"
+    else:
+        top_risk_name = "ยังไม่มีโรคเกินเกณฑ์"
+        top_risk_note = "สถานการณ์อยู่ในเกณฑ์ปกติ"
+
+    alert_color = "#be123c" if len(flagged_items) > 0 else "#15803d"
+    unit_lbl = "รายการ (จังหวัด×โรค)" if is_all_prov else "โรค"
 
     render_html(f"""
     <div class="kpi-row">
         <div class="kpi-card">
-            <div class="kpi-lbl">โรคที่ต้องเฝ้าระวังสัปดาห์หน้า</div>
-            <div class="kpi-val" style="color:{alert_color};">{len(view_alerts)} จาก {len(view_diseases)} โรค</div>
-            <div class="kpi-note">คัดเฉพาะโรคที่คาดว่าจะเกินเกณฑ์เตือน</div>
+            <div class="kpi-lbl">ที่ต้องเฝ้าระวังสัปดาห์หน้า</div>
+            <div class="kpi-val" style="color:{alert_color};">{len(flagged_items)} จาก {len(view_items)} {unit_lbl}</div>
+            <div class="kpi-note">คัดเฉพาะรายการที่คาดว่าจะเกินเกณฑ์เตือน</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-lbl">โรคเสี่ยงสูงสุดที่ต้องดู</div>
+            <div class="kpi-lbl">ต้องระวังเป็นอันดับที่ 1</div>
             <div class="kpi-val" style="font-size:17px; color:{alert_color};">{top_risk_name}</div>
             <div class="kpi-note">{top_risk_note}</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-lbl">ยอดคาดการณ์สัปดาห์หน้า</div>
+            <div class="kpi-lbl">ยอดคาดการณ์รวมสัปดาห์หน้า</div>
             <div class="kpi-val">{total_fc:,} ราย</div>
             <div class="kpi-note">{diff_total_txt}</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-lbl">ยอดผู้ป่วยจริง (สัปดาห์ล่าสุด)</div>
+            <div class="kpi-lbl">ยอดผู้ป่วยจริงรวม (สัปดาห์ล่าสุด)</div>
             <div class="kpi-val">{total_latest:,} ราย</div>
             <div class="kpi-note">ข้อมูล ณ วันตัดรอบ {meta['cutoff_date']}</div>
         </div>
@@ -563,15 +606,24 @@ with tab1:
     col_chart, col_action = st.columns([1.25, 1.0], gap="medium")
 
     with col_chart:
-        render_html("""
+        # แสดงสูงสุด 6 อันดับแรกที่เสี่ยงสูงสุดเพื่อให้กราฟไม่เบียดและอ่านง่าย
+        chart_slice = view_items[:6]
+        chart_sub_extra = f" • แสดง {len(chart_slice)} อันดับเสี่ยงสูงสุดจากทั้งหมด {len(view_items)} รายการ" if len(view_items) > 6 else ""
+        render_html(f"""
         <div class="panel-box" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none;">
-            <div class="panel-title">เปรียบเทียบ "ยอดคาดสัปดาห์หน้า" กับ "เกณฑ์เตือน"</div>
-            <div class="panel-sub">แท่งสีแดง = คาดว่าจะเกินเกณฑ์เตือน (ควรตรวจสอบก่อน) • แท่งสีฟ้า = อยู่ในเกณฑ์ปกติ</div>
+            <div class="panel-title">เปรียบเทียบ "ยอดคาดสัปดาห์หน้า" กับ "เกณฑ์เตือน" (เรียงอันดับความเสี่ยงบนลงล่าง)</div>
+            <div class="panel-sub">สีแดง = เกินเกณฑ์เตือน • สีฟ้า = ปกติ{chart_sub_extra}</div>
         </div>
         """)
 
-        chart_items = list(reversed(view_diseases))
-        y_names = [f"{d['disease_name']} ({d['disease_code']})" for d in chart_items]
+        chart_items = list(reversed(chart_slice))
+        if is_all_prov and selected_disease_code is None:
+            y_names = [f"จ.{d['province_name']} - {d['disease_name']}" for d in chart_items]
+        elif is_all_prov:
+            y_names = [f"จ.{d['province_name']} ({d['province_code']})" for d in chart_items]
+        else:
+            y_names = [f"{d['disease_name']} ({d['disease_code']})" for d in chart_items]
+
         fc_vals = [to_int(d["forecast"]) for d in chart_items]
         th_vals = [to_int(d["threshold"]) for d in chart_items]
         fc_colors = ["#e11d48" if d["is_flagged"] else "#0284c7" for d in chart_items]
@@ -585,44 +637,44 @@ with tab1:
         fig_ov.add_trace(go.Bar(
             y=y_names, x=th_vals, name="เกณฑ์เตือนปกติ", orientation="h",
             marker=dict(color="#cbd5e1"), text=th_texts, textposition="outside",
-            textfont=dict(size=12, color="#64748b"),
+            textfont=dict(size=11.5, color="#64748b"),
             hovertemplate="%{y}<br>เกณฑ์เตือน: %{x:,} ราย<extra></extra>"
         ))
         fig_ov.add_trace(go.Bar(
             y=y_names, x=fc_vals, name="ยอดคาดสัปดาห์หน้า", orientation="h",
             marker=dict(color=fc_colors), text=fc_texts, textposition="outside",
-            textfont=dict(size=12.5, color="#0f172a"),
+            textfont=dict(size=12, color="#0f172a"),
             hovertemplate="%{y}<br>ยอดคาดสัปดาห์หน้า: %{x:,} ราย<extra></extra>"
         ))
 
         max_x = max(fc_vals + th_vals + [1])
-        chart_h = 210 if len(chart_items) == 1 else 320
+        chart_h = max(220, 75 + len(chart_items) * 58)
         fig_ov.update_layout(
             barmode="group", bargap=0.28, bargroupgap=0.12,
             plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
-            legend=dict(orientation="h", yanchor="bottom", y=1.06, xanchor="left", x=0, font=dict(size=12.5)),
-            font=dict(family="IBM Plex Sans Thai, sans-serif", size=12.5, color="#334155"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0, font=dict(size=12)),
+            font=dict(family="IBM Plex Sans Thai, sans-serif", size=12, color="#334155"),
             margin=dict(l=10, r=30, t=42, b=28), height=chart_h
         )
         fig_ov.update_xaxes(
             showgrid=True, gridcolor="#f1f5f9", zeroline=False,
-            range=[0, max_x * 1.45], nticks=5, tickformat=",d",
+            range=[0, max_x * 1.48], nticks=5, tickformat=",d",
             title_text="จำนวนผู้ป่วย (ราย)", title_font=dict(size=12, color="#64748b")
         )
-        fig_ov.update_yaxes(showgrid=False, automargin=True, tickfont=dict(size=12.5, color="#0f172a"))
+        fig_ov.update_yaxes(showgrid=False, automargin=True, tickfont=dict(size=12, color="#0f172a"))
         st.plotly_chart(fig_ov, use_container_width=True)
 
     with col_action:
-        render_html('<div class="sec-label" style="margin-top:0;">โรคที่ทีมระบาดวิทยาควรเฝ้าระวังและเตรียมรับมือสัปดาห์หน้า</div>')
-        if not view_alerts:
+        render_html('<div class="sec-label" style="margin-top:0;">จัดอันดับที่ควรเฝ้าระวังและรับมือก่อน (สูงสุด 3 อันดับแรก)</div>')
+        if not top_alerts:
             render_html(f"""
             <div class="safe-card">
                 <b>สัปดาห์เป้าหมาย {meta['target_week']} ยังไม่มีสัญญาณเตือน</b><br>
-                ยอดคาดการณ์ของ <b>{disease_scope_text}</b> ในจังหวัด{prov['province_name']} ยังอยู่ต่ำกว่าเกณฑ์เตือน สามารถเฝ้าระวังตามรอบปกติได้ครับ
+                ยอดคาดการณ์ของ <b>{disease_scope_text}</b> ใน <b>{area_title}</b> ยังอยู่ต่ำกว่าเกณฑ์เตือนทั้งหมด สามารถเฝ้าระวังตามรอบปกติได้ครับ
             </div>
             """)
         else:
-            for i, item in enumerate(view_alerts):
+            for i, item in enumerate(top_alerts):
                 fc_i = to_int(item["forecast"])
                 th_i = to_int(item["threshold"])
                 lt_i = to_int(item["latest_cases"])
@@ -630,12 +682,13 @@ with tab1:
                 hi_i = to_int(item["pi_high"])
                 diff = fc_i - th_i
                 guide = DISEASE_ACTION_GUIDE.get(item["disease_code"], "ตรวจสอบข้อมูลรายอำเภอและยืนยันแนวโน้มกับทีมพื้นที่")
+                prov_badge = f'<span class="action-prov">จ.{item["province_name"]}</span>' if is_all_prov else ""
 
                 render_html(f"""
                 <div class="action-card">
                     <div class="action-head">
-                        <span class="action-name">{item['disease_name']}</span>
-                        <span class="action-rank">อันดับ #{i+1} • เกินเกณฑ์ +{diff:,} ราย</span>
+                        <div><span class="action-name">{item['disease_name']}</span>{prov_badge}</div>
+                        <span class="action-rank">อันดับ #{i+1} • เกิน +{diff:,} ราย</span>
                     </div>
                     <div class="action-stats">
                         คาดสัปดาห์หน้า <b style="color:#be123c;">{fc_i:,} ราย</b> (เกณฑ์ {th_i:,} ราย) • ล่าสุด {lt_i:,} ราย • ช่วง 95%: {lo_i:,}–{hi_i:,} ราย
@@ -645,10 +698,12 @@ with tab1:
                     </div>
                 </div>
                 """)
+            if len(flagged_items) > 3:
+                render_html(f'<div class="hint-text">ยังมีรายการที่เกินเกณฑ์อีก {len(flagged_items) - 3} รายการ ดูทั้งหมดได้ในตารางด้านล่าง</div>')
 
-    render_html('<div class="sec-label">ตารางสรุปตัวเลขรายโรค</div>')
+    render_html('<div class="sec-label">ตารางสรุปตัวเลขทั้งหมด (เรียงลำดับความเสี่ยงจากมากไปน้อย)</div>')
     rows_html = []
-    for d in view_diseases:
+    for rank_idx, d in enumerate(view_items, start=1):
         fc_i = to_int(d["forecast"])
         th_i = to_int(d["threshold"])
         lt_i = to_int(d["latest_cases"])
@@ -663,10 +718,12 @@ with tab1:
             badge = '<span class="badge-ok">ปกติ</span>'
             diff_txt = f'<span style="color:#15803d;">{diff:,} ราย</span>'
 
+        prov_td = f"<td><b>จ.{d['province_name']}</b></td>" if is_all_prov else ""
         rows_html.append(f"""
         <tr>
-            <td><b>{d['disease_code']}</b></td>
-            <td><b>{d['disease_name']}</b></td>
+            <td class="ctr">{rank_idx}</td>
+            {prov_td}
+            <td><b>{d['disease_code']} - {d['disease_name']}</b></td>
             <td class="num">{lt_i:,}</td>
             <td class="num"><b>{fc_i:,}</b><span class="muted">ช่วง {lo_i:,}–{hi_i:,}</span></td>
             <td class="num">{th_i:,}</td>
@@ -674,12 +731,14 @@ with tab1:
             <td class="ctr">{badge}</td>
         </tr>
         """)
+
+    prov_th = "<th>จังหวัด</th>" if is_all_prov else ""
     render_html(f"""
     <div class="tbl-wrap">
     <table class="m-table">
         <thead>
             <tr>
-                <th>รหัส</th><th>ชื่อโรค</th><th class="num">ยอดล่าสุด</th>
+                <th class="ctr">อันดับ</th>{prov_th}<th>โรค</th><th class="num">ยอดล่าสุด</th>
                 <th class="num">ยอดคาดสัปดาห์หน้า</th><th class="num">เกณฑ์เตือน</th>
                 <th class="num">ต่างจากเกณฑ์</th><th class="ctr">สถานะ</th>
             </tr>
@@ -690,14 +749,22 @@ with tab1:
     """)
 
 # =========================================================
-# แท็บ 2: กราฟแนวโน้มรายโรค (ตัวหนังสือไม่เบียดกัน)
+# แท็บ 2: กราฟแนวโน้มรายโรค (ตั้งค่าเริ่มต้นที่อันดับ 1 เสี่ยงสูงสุด)
 # =========================================================
 with tab2:
-    if len(view_diseases) == 1:
-        d = view_diseases[0]
+    if len(view_items) == 1:
+        d = view_items[0]
     else:
-        d_map = {f"{item['disease_code']} - {item['disease_name']}": item for item in view_diseases}
-        sel_d = st.selectbox("เลือกโรคที่ต้องการดูแนวโน้มย้อนหลัง 1 ปี", list(d_map.keys()))
+        d_map = {}
+        for item in view_items:
+            dot = "🔴" if item["is_flagged"] else "🟢"
+            lbl = (
+                f"{dot} จ.{item['province_name']} — {item['disease_code']} {item['disease_name']}"
+                if is_all_prov else
+                f"{dot} {item['disease_code']} - {item['disease_name']}"
+            )
+            d_map[lbl] = item
+        sel_d = st.selectbox("เลือกจังหวัดและโรคที่ต้องการดูแนวโน้มย้อนหลัง 1 ปี (เรียงเสี่ยงสูงสุดไว้บนสุด)", list(d_map.keys()))
         d = d_map[sel_d]
 
     fc_i = to_int(d["forecast"])
@@ -733,7 +800,7 @@ with tab2:
 
     render_html(f"""
     <div class="panel-box" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none;">
-        <div class="panel-title">แนวโน้มผู้ป่วยรายสัปดาห์ — {d['disease_name']} (จังหวัด{prov['province_name']})</div>
+        <div class="panel-title">แนวโน้มผู้ป่วยรายสัปดาห์ — {d['disease_name']} (จังหวัด{d['province_name']})</div>
         <div class="panel-sub">แสดงยอดย้อนหลัง 1 ปี เทียบกับเส้นเกณฑ์เตือนและจุดพยากรณ์สัปดาห์หน้า (ชี้เมาส์เพื่อดูยอดแต่ละสัปดาห์)</div>
     </div>
     """)
@@ -811,13 +878,13 @@ with tab2:
 
     guide_sel = DISEASE_ACTION_GUIDE.get(d["disease_code"], "")
     if guide_sel:
-        render_html(f'<div class="hint-text"><b>ข้อแนะนำสำหรับทีมระบาดวิทยา ({d["disease_name"]}):</b> {guide_sel}</div>')
+        render_html(f'<div class="hint-text"><b>ข้อแนะนำสำหรับทีมระบาดวิทยา (จ.{d["province_name"]} • {d["disease_name"]}):</b> {guide_sel}</div>')
 
 # =========================================================
-# แท็บ 3: บันทึกและติดตามผล + ประเมินรายเดือน 4 ตัวชี้วัด (โชว์ 4 กล่องตลอดเวลา)
+# แท็บ 3: บันทึกและติดตามผล + ประเมินรายเดือน 4 ตัวชี้วัด
 # =========================================================
 with tab3:
-    reg_df = load_registry(prov["province_code"], selected_disease_code)
+    reg_df = load_registry(selected_prov_code, selected_disease_code)
 
     render_html("""
     <div class="info-strip">
@@ -831,7 +898,7 @@ with tab3:
         reg_df["month"] = reg_df["target_week"].astype(str).str.slice(0, 7)
         c_title, c_month = st.columns([3, 1])
         with c_title:
-            render_html(f'<div class="sec-label">ผลประเมินระบบติดตามผลรายเดือน — {disease_scope_text}</div>')
+            render_html(f'<div class="sec-label">ผลประเมินระบบติดตามผลรายเดือน — {area_title} • {disease_scope_text}</div>')
         sel_m = c_month.selectbox(
             "เลือกเดือน", ["ทั้งหมด"] + sorted(reg_df["month"].unique().tolist(), reverse=True),
             label_visibility="collapsed"
@@ -861,7 +928,6 @@ with tab3:
             m3_note = f"แจ้งเตือนทั้งหมด {tp + fp} ครั้ง / เตือนเกิน {fp} ครั้ง"
             m4_val = f"{avg_hr:.1f} ชม." if pd.notna(avg_hr) else "ยังไม่ระบุเวลา"
 
-        # แสดง 4 กล่อง KPI ตลอดเวลาเพื่อให้เห็นว่าข้อมูลที่กรอกจะถูกส่งมาคำนวณที่นี่
         render_html(f"""
         <div class="kpi-row">
             <div class="kpi-card"><div class="kpi-lbl">1. ความแม่นของสัญญาณ</div><div class="kpi-val">{m1_val}</div><div class="kpi-note">เตือนแล้วเข้าเกณฑ์จริง ÷ เตือนทั้งหมด</div></div>
@@ -872,8 +938,12 @@ with tab3:
         """)
 
         with st.expander("บันทึกผลการตรวจสอบ / ปิดยอดจริง (กรอกแล้วกดบันทึก ตัวชี้วัดด้านบนจะอัปเดตทันที)", expanded=True):
-            reg_df["label"] = reg_df["run_id"] + "  |  " + reg_df["disease_code"] + " - " + reg_df["disease_name"] + "  |  สัปดาห์ " + reg_df["target_week"]
-            sel_rec = st.selectbox("เลือกรอบรายงานและโรคที่ต้องการบันทึก", reg_df["label"].tolist())
+            reg_df["label"] = (
+                reg_df["run_id"] + "  |  จ." + reg_df["province_name"].astype(str) +
+                "  |  " + reg_df["disease_code"] + " - " + reg_df["disease_name"] +
+                "  |  สัปดาห์ " + reg_df["target_week"]
+            )
+            sel_rec = st.selectbox("เลือกรอบรายงาน จังหวัด และโรคที่ต้องการบันทึก", reg_df["label"].tolist())
             rec = reg_df[reg_df["label"] == sel_rec].iloc[0]
 
             with st.form("track_form", border=False):
@@ -929,9 +999,11 @@ with tab3:
             f_badge = '<span class="badge-red">ชี้เป้า</span>' if str(r["is_flagged"]).lower() == "true" else '<span class="badge-ok">ปกติ</span>'
             act_s = clean_str(r["settled_actual_cases"])
             act_txt = f"<b>{fmt_int(act_s)} ราย</b>" if act_s != "" else '<span style="color:#94a3b8;">รอยอดนิ่ง</span>'
+            prov_td = f"<td><b>จ.{r['province_name']}</b></td>" if is_all_prov else ""
             reg_rows.append(f"""
             <tr>
                 <td><b>{r['run_id']}</b><span class="muted">เป้าหมาย {r['target_week']}</span></td>
+                {prov_td}
                 <td><b>{r['disease_name']}</b></td>
                 <td class="num"><b>{fmt_int(r['frozen_forecast'])}</b><span class="muted">เกณฑ์ {fmt_int(r['frozen_threshold'])}</span></td>
                 <td class="ctr">{f_badge}</td>
@@ -941,12 +1013,13 @@ with tab3:
                 <td class="num">{act_txt}</td>
             </tr>
             """)
+        prov_th = "<th>จังหวัด</th>" if is_all_prov else ""
         render_html(f"""
         <div class="tbl-wrap">
         <table class="m-table">
             <thead>
                 <tr>
-                    <th>รอบรายงาน</th><th>โรค</th><th class="num">คาด / เกณฑ์</th><th class="ctr">สถานะ</th>
+                    <th>รอบรายงาน</th>{prov_th}<th>โรค</th><th class="num">คาด / เกณฑ์</th><th class="ctr">สถานะ</th>
                     <th>เวลาเริ่มตรวจ</th><th>ผลภาคสนาม</th><th>การดำเนินการ</th><th class="num">ยอดจริงนิ่งแล้ว</th>
                 </tr>
             </thead>
@@ -966,19 +1039,22 @@ with tab4:
         bt = pd.read_csv(BACKTEST_FILE, dtype={"รหัสจังหวัด": str, "รหัสโรค": str})
         bt["รหัสจังหวัด"] = bt["รหัสจังหวัด"].str.strip().str.replace(r"\.0$", "", regex=True)
         bt["รหัสโรค"] = bt["รหัสโรค"].str.strip().str.replace(r"\.0$", "", regex=True).str.zfill(2)
-        bt = bt[bt["รหัสจังหวัด"] == str(prov["province_code"])].copy()
+        if selected_prov_code is not None:
+            bt = bt[bt["รหัสจังหวัด"] == str(selected_prov_code)].copy()
         if selected_disease_code is not None:
             bt = bt[bt["รหัสโรค"] == str(selected_disease_code).zfill(2)].copy()
 
         if bt.empty:
             st.info("ไม่มีผลทดสอบย้อนหลังสำหรับจังหวัดและโรคที่เลือก")
         else:
-            best_mae = bt.groupby("รหัสโรค")["MAE"].transform("min")
+            best_mae = bt.groupby(["รหัสจังหวัด", "รหัสโรค"])["MAE"].transform("min")
             bt_rows = []
             for idx, r in bt.iterrows():
                 tag = ' <span class="badge-blue">แม่นสุด</span>' if r["MAE"] == best_mae.loc[idx] else ""
+                prov_td = f"<td><b>จ.{r['จังหวัด']}</b></td>" if is_all_prov else ""
                 bt_rows.append(f"""
                 <tr>
+                    {prov_td}
                     <td><b>{r['ชื่อโรค']}</b><span class="muted">เกณฑ์ {fmt_int(r['เกณฑ์ชี้เป้า'])} ราย ({fmt_int(r['สัปดาห์ทดสอบ'])} สัปดาห์)</span></td>
                     <td>{r['โมเดล']}{tag}</td>
                     <td class="num"><b>{r['MAE']}</b></td>
@@ -989,12 +1065,13 @@ with tab4:
                     <td class="num">{r['ความครอบคลุม']}</td>
                 </tr>
                 """)
+            prov_th = "<th>จังหวัด</th>" if is_all_prov else ""
             render_html(f"""
             <div class="tbl-wrap">
             <table class="m-table">
                 <thead>
                     <tr>
-                        <th>โรค</th><th>วิธีคำนวณ</th><th class="num">ทายพลาดเฉลี่ย (MAE)</th>
+                        {prov_th}<th>โรค</th><th>วิธีคำนวณ</th><th class="num">ทายพลาดเฉลี่ย (MAE)</th>
                         <th class="num">เตือนถูก</th><th class="num">เตือนเกิน</th><th class="num">พลาด</th>
                         <th class="num">ความแม่นสัญญาณ</th><th class="num">ความครอบคลุม</th>
                     </tr>
@@ -1004,3 +1081,5 @@ with tab4:
             </div>
             <div class="hint-text">หมายเหตุ: หากไฟล์ที่ใช้ทดสอบเป็นข้อมูลปรับย้อนหลัง ยอดผู้ป่วยจริงอาจสูงกว่ายอดที่เห็น ณ วันพยากรณ์จริงเนื่องจากความล่าช้าในการส่งรายงาน</div>
             """)
+
+           
