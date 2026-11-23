@@ -237,7 +237,7 @@ div[data-baseweb="select"] > div,
 /* ================= 5. Header Banner (เขียวสาธารณสุข-ขาว) ================= */
 .top-header {
     background: linear-gradient(90deg, #005a2f 0%, #007a40 100%);
-    border-bottom: 4px solid #f59e0b;
+    
     border-radius: 8px;
     padding: 18px 24px;
     margin-bottom: 16px;
