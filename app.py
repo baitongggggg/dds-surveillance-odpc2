@@ -711,8 +711,8 @@ with st.sidebar:
 
     selected_provinces_objs = []
     for p in payload["provinces"]:
-        pt = get_prov_theme(p["province_code"])
-        chk_lbl = f"{pt['dot']} จ.{p['province_name']} (เตือน {p['alert_count']} โรค)"
+    
+        chk_lbl = f" จ.{p['province_name']} (เตือน {p['alert_count']} โรค)"
         if st.checkbox(chk_lbl, key=f"chk_p_{p['province_code']}", on_change=_sync_all_p):
             selected_provinces_objs.append(p)
 
