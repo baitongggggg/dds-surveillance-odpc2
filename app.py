@@ -11,7 +11,7 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 warnings.filterwarnings("ignore")
 
 st.set_page_config(
-    page_title="ชี้เป้าโรคเฝ้าระวังสัปดาห์หน้า (DDS สคร.2)",
+    page_title="ระบบชี้เป้าโรคเฝ้าระวังสัปดาห์หน้า | สคร.2 จ.พิษณุโลก",
     page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -75,7 +75,6 @@ DISEASE_NAMES = {
     "31": "โรคปอดอักเสบ"
 }
 
-# สีและสัญลักษณ์ประจำ 5 จังหวัด สคร.2 (ลดความตาลาย แยกจังหวัดได้ทันที)
 PROVINCE_THEME = {
     "65": {"dot": "🔵", "color": "#0284c7", "bg": "#e0f2fe"},  # พิษณุโลก
     "53": {"dot": "🟣", "color": "#7c3aed", "bg": "#ede9fe"},  # อุตรดิตถ์
@@ -94,42 +93,47 @@ JSON_FILE = "dashboard_data.json"
 CSV_REGISTRY = "tracking_registry.csv"
 
 # =========================================================
-# สไตล์หน้าเว็บ: โทนสว่าง มินิมอล ตารางอ่านง่ายไม่ตาลาย
+# สไตล์เว็บไซต์พอร์ทัลสาธารณสุข (เขียว-ขาว) + ช่องติ๊กชมพูพาสเทล
 # =========================================================
 render_html("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap');
 
-/* ================= 1. Base & Official Public Health Font ================= */
+/* ================= 1. Base & Website Typography ================= */
 html, body, [class*="css"] {
     font-family: 'Noto Sans Thai', sans-serif !important;
     font-size: 14px !important;
     color: #1f2937;
+    -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3, .top-title, .panel-title, .sec-label {
+h1, h2, h3, .top-title, .panel-title, .sec-label, .portal-org {
     font-family: 'Prompt', 'Noto Sans Thai', sans-serif !important;
 }
 .stApp { background-color: #f3f6f4; }
 
-header[data-testid="stHeader"] { background: transparent !important; }
-#MainMenu, footer { visibility: hidden; }
+/* ซ่อนแถบสีด้านบนสุด, ปุ่ม Deploy และ Footer เดิมของ Streamlit ให้ดูเป็นเว็บไซต์จริง */
+[data-testid="stDecoration"] { display: none !important; }
+[data-testid="stToolbar"] { visibility: hidden !important; }
+header[data-testid="stHeader"] { background: transparent !important; height: 2.2rem !important; }
+#MainMenu, footer { visibility: hidden !important; }
+
 .block-container {
-    padding-top: 1.2rem !important;
-    padding-bottom: 2.8rem !important;
-    max-width: 1180px !important;
+    padding-top: 0.6rem !important;
+    padding-bottom: 2rem !important;
+    max-width: 1200px !important;
 }
 
-/* ================= 2. Sidebar (มีสีสัน น่าอ่าน) ================= */
+/* ================= 2. Sidebar + ช่องติ๊กสีชมพูพาสเทล ================= */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #e8f5ee 0%, #f8fafc 30%, #ffffff 100%);
-    border-right: 1px solid #cbd5e1;
+    background: linear-gradient(180deg, #ebf5ef 0%, #f8fafc 28%, #ffffff 100%);
+    border-right: 1px solid #d1d5db;
 }
 .sidebar-brand {
     background: linear-gradient(135deg, #005a2f 0%, #007a40 100%);
     border-radius: 10px;
     padding: 14px 16px;
     margin-bottom: 16px;
-    box-shadow: 0 4px 10px rgba(0, 104, 55, 0.15);
+    box-shadow: 0 4px 10px rgba(0, 104, 55, 0.14);
 }
 .sidebar-brand-title { font-size: 15px; font-weight: 700; color: #ffffff; margin: 0; }
 .sidebar-brand-sub { font-size: 11.5px; color: #d1fae5; margin: 3px 0 0 0; }
@@ -138,47 +142,72 @@ header[data-testid="stHeader"] { background: transparent !important; }
     background: #ffffff;
     border-left: 4px solid #006837;
     border-radius: 6px;
-    padding: 6px 10px;
+    padding: 7px 11px;
     font-size: 13px;
     font-weight: 700;
     color: #00522b;
-    margin: 12px 0 8px 0;
+    margin: 14px 0 8px 0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
-/* เปลี่ยนสีช่องติ๊ก Checkbox เป็นสีเขียวสาธารณสุข */
-[data-testid="stSidebar"] input[type="checkbox"] { accent-color: #006837; }
-[data-testid="stSidebar"] .stCheckbox { margin-bottom: -6px; }
 
-/* กล่องขั้นตอนการใช้งานเว็บนี้ (เด่น น่าอ่าน) */
+/* เปลี่ยนสีช่องติ๊ก Checkbox จากสีแดงเข้ม เป็นสีชมพูพาสเทล */
+[data-testid="stSidebar"] .stCheckbox {
+    padding: 2px 6px;
+    border-radius: 6px;
+    margin-bottom: -4px;
+    transition: background-color 0.15s ease;
+}
+[data-testid="stSidebar"] .stCheckbox:hover {
+    background-color: #fdf2f8;
+}
+[data-testid="stSidebar"] label[data-baseweb="checkbox"] > div:first-of-type {
+    border-radius: 5px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    transition: all 0.15s ease;
+}
+[data-testid="stSidebar"] label[data-baseweb="checkbox"] input:checked + div,
+[data-testid="stSidebar"] label[data-baseweb="checkbox"]:has(input:checked) > div:first-of-type {
+    background-color: #f9a8d4 !important;
+    border-color: #f472b6 !important;
+}
+[data-testid="stSidebar"] label[data-baseweb="checkbox"] input:checked + div svg,
+[data-testid="stSidebar"] label[data-baseweb="checkbox"]:has(input:checked) > div:first-of-type svg {
+    fill: #831843 !important;
+    color: #831843 !important;
+}
+
+/* กล่องขั้นตอนการใช้งานเว็บนี้ */
 .guide-card {
-    background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
-    border: 1.5px solid #fcd34d;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-top: 3.5px solid #006837;
     border-radius: 10px;
     padding: 13px 14px;
-    margin-top: 16px;
-    box-shadow: 0 3px 10px rgba(245, 158, 11, 0.1);
+    margin-top: 18px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 .guide-hdr {
     font-size: 13.5px;
     font-weight: 700;
-    color: #92400e;
+    color: #00522b;
     margin-bottom: 10px;
     padding-bottom: 6px;
-    border-bottom: 1px dashed #fcd34d;
+    border-bottom: 1px solid #e5e7eb;
 }
 .guide-step {
     display: flex;
     gap: 8px;
     align-items: flex-start;
-    margin-bottom: 8px;
+    margin-bottom: 9px;
     font-size: 12px;
     color: #374151;
     line-height: 1.5;
 }
 .guide-step:last-child { margin-bottom: 0; }
 .guide-num {
-    background: #006837;
-    color: #ffffff;
+    background: #e6f4ed;
+    color: #006837;
+    border: 1px solid #a7f3d0;
     font-weight: 700;
     font-size: 11px;
     min-width: 20px;
@@ -189,65 +218,58 @@ header[data-testid="stHeader"] { background: transparent !important; }
     justify-content: center;
     margin-top: 1px;
 }
-/* ================= 3. Official Portal Tabs ================= */
-.stTabs [data-baseweb="tab-list"] {
-    background-color: #ffffff;
-    padding: 0 12px;
-    border-radius: 8px;
+
+/* ================= 3. Website Top Navigation Bar ================= */
+.portal-navbar {
+    background: #ffffff;
     border: 1px solid #d1d5db;
-    gap: 16px;
-    margin-bottom: 18px;
+    border-radius: 10px;
+    padding: 10px 18px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
-.stTabs [data-baseweb="tab"] {
-    padding: 11px 8px !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    color: #4b5563 !important;
+.portal-org {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #006837;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
-.stTabs [aria-selected="true"] {
-    color: #006837 !important;
-    font-weight: 700 !important;
+.portal-dot {
+    width: 9px;
+    height: 9px;
+    background-color: #10b981;
+    border-radius: 50%;
+    display: inline-block;
 }
-/* เปลี่ยนเส้นไฮไลต์เดิมของ Streamlit จากสีแดงเป็นสีเขียวเส้นเดียว */
-.stTabs [data-baseweb="tab-highlight"],
-div[data-baseweb="tab-highlight"] {
-    background-color: #006837 !important;
-    height: 3px !important;
-} { display: none !important; }
-
-/* ================= 4. Buttons & Inputs ================= */
-.stButton > button[kind="primary"], .stFormSubmitButton > button {
-    background-color: #006837 !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 6px !important;
-    padding: 0.5rem 1.25rem !important;
-    font-weight: 600 !important;
-}
-.stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover {
-    background-color: #00522b !important;
-}
-div[data-baseweb="select"] > div,
-.stTextInput > div > div > input,
-.stDateInput > div > div > input {
-    border-radius: 6px !important;
-    border: 1px solid #cbd5e1 !important;
+.portal-sys {
+    font-size: 12px;
+    color: #4b5563;
+    background: #f3f4f6;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-weight: 500;
 }
 
-/* ================= 5. Header Banner (เขียวสาธารณสุข-ขาว) ================= */
+/* ================= 4. Hero Banner (เขียวสาธารณสุข-ขาว ไม่มีเส้นเหลือง) ================= */
 .top-header {
-    background: linear-gradient(90deg, #005a2f 0%, #007a40 100%);
-    
-    border-radius: 8px;
-    padding: 18px 24px;
-    margin-bottom: 16px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    background: linear-gradient(120deg, #00522b 0%, #006837 55%, #059669 100%);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 12px rgba(0, 104, 55, 0.14);
 }
 .top-title {
-    font-size: 20px;
+    font-size: 20.5px;
     font-weight: 600;
     color: #ffffff;
-    margin: 0 0 10px 0;
+    margin: 0 0 11px 0;
 }
 .meta-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .meta-tag {
@@ -255,14 +277,14 @@ div[data-baseweb="select"] > div,
     color: #ffffff;
     border: 1px solid rgba(255, 255, 255, 0.25);
     padding: 3px 11px;
-    border-radius: 4px;
+    border-radius: 5px;
     font-size: 12px;
 }
 .meta-tag-blue {
     background: #ffffff;
     color: #006837;
     padding: 3px 12px;
-    border-radius: 4px;
+    border-radius: 5px;
     font-size: 12px;
     font-weight: 700;
 }
@@ -271,20 +293,75 @@ div[data-baseweb="select"] > div,
     color: #92400e;
     border: 1px solid #fcd34d;
     padding: 3px 11px;
-    border-radius: 4px;
+    border-radius: 5px;
     font-size: 12px;
     font-weight: 600;
 }
 
-/* ================= 6. Cards & Panels (กล่องขอบคมสไตล์เว็บหน่วยงาน) ================= */
+/* ================= 5. Website Navigation Tabs (เส้นเขียวเส้นเดียว) ================= */
+.stTabs [data-baseweb="tab-list"] {
+    background-color: #ffffff;
+    padding: 0 16px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    gap: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+.stTabs [data-baseweb="tab"] {
+    padding: 12px 6px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: #4b5563 !important;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    color: #006837 !important;
+}
+.stTabs [aria-selected="true"] {
+    color: #006837 !important;
+    font-weight: 700 !important;
+}
+.stTabs [data-baseweb="tab-highlight"],
+div[data-baseweb="tab-highlight"] {
+    background-color: #006837 !important;
+    height: 3px !important;
+}
+
+/* ================= 6. Buttons & Inputs ================= */
+.stButton > button[kind="primary"], .stFormSubmitButton > button {
+    background-color: #006837 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 7px !important;
+    padding: 0.5rem 1.3rem !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 6px rgba(0, 104, 55, 0.2) !important;
+}
+.stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover {
+    background-color: #00522b !important;
+}
+div[data-baseweb="select"] > div,
+.stTextInput > div > div > input,
+.stDateInput > div > div > input {
+    border-radius: 7px !important;
+    border: 1px solid #cbd5e1 !important;
+    background-color: #ffffff !important;
+}
+
+/* ================= 7. Cards & Panels ================= */
 .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 4px 0 18px 0; }
 .kpi-card, .kpi-card-accent {
     background: #ffffff;
     border: 1px solid #d1d5db;
-    border-top: 3px solid #006837;
-    border-radius: 8px;
-    padding: 14px 18px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border-top: 3.5px solid #006837;
+    border-radius: 10px;
+    padding: 15px 18px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.kpi-card:hover, .kpi-card-accent:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
 }
 .kpi-lbl { font-size: 12.5px; color: #4b5563; font-weight: 500; }
 .kpi-val { font-size: 21px; font-weight: 700; color: #111827; margin-top: 4px; }
@@ -293,21 +370,21 @@ div[data-baseweb="select"] > div,
 .panel-box {
     background: #ffffff;
     border: 1px solid #d1d5db;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 16px 20px;
     margin-bottom: 14px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 .panel-title { font-size: 15px; font-weight: 600; color: #006837; margin: 0 0 4px 0; }
 .panel-sub { font-size: 12.5px; color: #6b7280; margin: 0 0 8px 0; }
 
-/* ================= 7. Top-3 Alert Box ================= */
+/* ================= 8. Top-3 Alert Box ================= */
 .rank-box {
     background: #ffffff;
     border: 1px solid #fca5a5;
-    border-radius: 8px;
+    border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.06);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.06);
     margin-bottom: 12px;
 }
 .rank-box-header {
@@ -326,25 +403,25 @@ div[data-baseweb="select"] > div,
 .rank-item:first-of-type { background-color: #fffbfb; }
 .rank-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; }
 .rank-title { font-size: 14.5px; font-weight: 700; color: #111827; }
-.rank-b1 { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 4px; white-space: nowrap; }
-.rank-b2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 4px; white-space: nowrap; }
-.rank-b3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 4px; white-space: nowrap; }
+.rank-b1 { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 5px; white-space: nowrap; }
+.rank-b2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 5px; white-space: nowrap; }
+.rank-b3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 5px; white-space: nowrap; }
 .rank-bullets { margin: 4px 0 0 0; padding-left: 18px; color: #374151; font-size: 13px; line-height: 1.65; }
 .rank-bullets li { margin-bottom: 2px; }
 
-/* ================= 8. Tables & Badges (ตารางทางการหัวเขียวอ่อน) ================= */
-.prov-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.safe-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #006837; border-radius: 8px; padding: 14px 18px; color: #065f46; font-size: 13.5px; line-height: 1.6; }
-.info-strip { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #006837; color: #166534; padding: 11px 15px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; line-height: 1.6; }
-.rec-preview { background: #f9fafb; border: 1px solid #d1d5db; border-radius: 6px; padding: 10px 14px; margin: 8px 0 12px 0; font-size: 13px; color: #374151; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+/* ================= 9. Tables, Badges & Website Footer ================= */
+.prov-pill { display: inline-block; padding: 2px 9px; border-radius: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.safe-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #006837; border-radius: 10px; padding: 14px 18px; color: #065f46; font-size: 13.5px; line-height: 1.6; }
+.rec-preview { background: #f9fafb; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 14px; margin: 8px 0 12px 0; font-size: 13px; color: #374151; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
 
 .tbl-wrap {
     background: #ffffff;
     border: 1px solid #d1d5db;
-    border-radius: 8px;
+    border-radius: 10px;
     overflow-x: auto;
     margin-top: 8px;
     margin-bottom: 18px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 .m-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .m-table th {
@@ -365,10 +442,24 @@ div[data-baseweb="select"] > div,
 .ctr { text-align: center !important; }
 .muted { font-size: 12px; color: #6b7280; }
 
-.badge-red { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 2px 9px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.badge-ok { background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 9px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge-red { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 2px 9px; border-radius: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge-ok { background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 9px; border-radius: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .sec-label { font-size: 15px; font-weight: 600; color: #006837; margin: 16px 0 8px 0; border-left: 4px solid #006837; padding-left: 10px; }
-.hint-text { font-size: 12.5px; color: #6b7280; margin-top: 4px; }
+
+.portal-footer {
+    margin-top: 28px;
+    padding: 14px 20px;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: #6b7280;
+}
 </style>
 """)
 
@@ -564,7 +655,7 @@ def predict_for_date(weekly_df, cutoff_str):
 
 
 # =========================================================
-# 3. แถบเมนูด้านซ้าย
+# 3. แถบเมนูด้านซ้าย (Sidebar)
 # =========================================================
 latest_json, weekly_df = load_files()
 min_date = pd.to_datetime("2023-11-23").date()
@@ -575,13 +666,13 @@ default_date = min(max(latest_cutoff, min_date), max_date)
 with st.sidebar:
     render_html("""
     <div class="sidebar-brand">
-        <div class="sidebar-brand-title">🩺 สคร.2 จ.พิษณุโลก</div>
+        <div class="sidebar-brand-title">สคร.2 จ.พิษณุโลก</div>
         <div class="sidebar-brand-sub">ระบบเฝ้าระวังและชี้เป้าโรค (DDS)</div>
     </div>
     """)
 
     # 1. เลือกวันตัดข้อมูล
-    render_html('<div class="sb-sec-hdr">📅 1. วันตัดข้อมูล (ถึงวันปัจจุบัน)</div>')
+    render_html('<div class="sb-sec-hdr">1. วันตัดข้อมูล (ถึงวันปัจจุบัน)</div>')
     picked_date = st.date_input(
         "วันตัดข้อมูล",
         value=default_date, min_value=min_date, max_value=max_date,
@@ -592,8 +683,8 @@ with st.sidebar:
     payload = latest_json if picked_str == latest_json["meta"]["cutoff_date"] else predict_for_date(weekly_df, picked_str)
     sync_to_registry(payload)
 
-    # 2. เลือกจังหวัดแบบติ๊ก (มีปุ่มเลือกทุกจังหวัด)
-    render_html('<div class="sb-sec-hdr"> 2. เลือกจังหวัด (สคร.2)</div>')
+    # 2. เลือกจังหวัดแบบติ๊ก (ชมพูพาสเทล + ปุ่มเลือกทั้งหมด)
+    render_html('<div class="sb-sec-hdr">2. เลือกจังหวัด (สคร.2)</div>')
     all_p_codes = [p["province_code"] for p in payload["provinces"]]
 
     if "chk_p_all" not in st.session_state:
@@ -619,8 +710,8 @@ with st.sidebar:
         if st.checkbox(chk_lbl, key=f"chk_p_{p['province_code']}", on_change=_sync_all_p):
             selected_provinces_objs.append(p)
 
-    # 3. เลือกโรคแบบติ๊ก (มีปุ่มเลือกทุกโรค)
-    render_html('<div class="sb-sec-hdr"> 3. เลือกกลุ่มโรคเฝ้าระวัง</div>')
+    # 3. เลือกโรคแบบติ๊ก (ชมพูพาสเทล + ปุ่มเลือกทั้งหมด)
+    render_html('<div class="sb-sec-hdr">3. เลือกกลุ่มโรคเฝ้าระวัง</div>')
     all_d_codes = ["02", "15", "31"]
 
     if "chk_d_all" not in st.session_state:
@@ -645,10 +736,10 @@ with st.sidebar:
         if st.checkbox(f"{d_code} - {d_name}", key=f"chk_d_{d_code}", on_change=_sync_all_d):
             selected_disease_codes.append(d_code)
 
-    # 4. กล่องขั้นตอนการใช้งานเว็บนี้แบบเด่นๆ
+    # 4. กล่องขั้นตอนการใช้งานเว็บนี้
     render_html("""
     <div class="guide-card">
-        <div class="guide-hdr">💡 ขั้นตอนการใช้งานเว็บนี้</div>
+        <div class="guide-hdr">ขั้นตอนการใช้งานเว็บนี้</div>
         <div class="guide-step">
             <div class="guide-num">1</div>
             <div><b>เลือกตัวกรองด้านบน</b> — กำหนดวันตัดข้อมูล ติ๊กเลือกจังหวัด และโรคที่ต้องการติดตาม</div>
@@ -666,12 +757,10 @@ with st.sidebar:
 
 meta = payload["meta"]
 
-# ตรวจสอบกรณีผู้ใช้เอาติ๊กออกทั้งหมด
 if not selected_provinces_objs or not selected_disease_codes:
     st.warning("กรุณาติ๊กเลือกอย่างน้อย 1 จังหวัด และ 1 โรค จากแถบเมนูด้านซ้ายเพื่อแสดงข้อมูลครับ")
     st.stop()
 
-# จัดเตรียมตัวแปรให้ใช้ร่วมกับทั้ง 3 แท็บได้เหมือนเดิม
 selected_prov_code = [p["province_code"] for p in selected_provinces_objs]
 selected_disease_code = selected_disease_codes
 is_all_prov = len(selected_provinces_objs) > 1
@@ -700,9 +789,20 @@ elif len(selected_provinces_objs) == 1:
     area_title = f"จังหวัด{selected_prov_obj['province_name']}"
 else:
     area_title = f"พื้นที่ที่เลือก ({len(selected_provinces_objs)} จังหวัด)"
+
 # =========================================================
-# 4. ส่วนหัวแดชบอร์ด + 3 แท็บหลัก
+# 4. แถบนำทางพอร์ทัล + หัวข้อใหญ่ + 3 แท็บหลัก
 # =========================================================
+render_html("""
+<div class="portal-navbar">
+    <div class="portal-org">
+        <span class="portal-dot"></span>
+        <span>กรมควบคุมโรค • สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก</span>
+    </div>
+    <div class="portal-sys">กลุ่มระบาดวิทยาและตอบโต้ภาวะฉุกเฉินทางสาธารณสุข</div>
+</div>
+""")
+
 status_cls = "meta-tag-warn" if "เบื้องต้น" in str(meta["data_status"]) else "meta-tag"
 render_html(f"""
 <div class="top-header">
@@ -740,9 +840,8 @@ with tab1:
     else:
         top_risk_name, top_risk_note = "ยังไม่มีโรคเกินเกณฑ์", "สถานการณ์อยู่ในเกณฑ์ปกติ"
 
-    alert_color = "#be123c" if len(flagged_items) > 0 else "#15803d"
+    alert_color = "#be123c" if len(flagged_items) > 0 else "#006837"
 
-    # ปรับข้อความกล่อง KPI ที่ 1 ให้อ่านเป็นธรรมชาติ ไม่ใช้ "จังหวัด×โรค"
     if is_all_prov:
         flagged_provs_cnt = len({d["province_code"] for d in flagged_items})
         kpi1_val = f"พบเตือน {flagged_provs_cnt} จังหวัด" if flagged_provs_cnt > 0 else "ปกติทุกจังหวัด"
@@ -760,7 +859,7 @@ with tab1:
         </div>
         <div class="kpi-card">
             <div class="kpi-lbl">ต้องระวังเป็นอันดับที่ 1</div>
-            <div class="kpi-val" style="font-size:17px; color:{alert_color};">{top_risk_name}</div>
+            <div class="kpi-val" style="font-size:17.5px; color:{alert_color};">{top_risk_name}</div>
             <div class="kpi-note">{top_risk_note}</div>
         </div>
         <div class="kpi-card">
@@ -789,7 +888,7 @@ with tab1:
         """)
 
         chart_items = list(reversed(chart_slice))
-        if is_all_prov and selected_disease_code is None:
+        if is_all_prov and len(selected_disease_codes) > 1:
             y_names = [f"จ.{d['province_name']} - {d['disease_name']}" for d in chart_items]
         elif is_all_prov:
             y_names = [f"จ.{d['province_name']} ({d['province_code']})" for d in chart_items]
@@ -818,15 +917,13 @@ with tab1:
         fig_ov.update_layout(
             barmode="group", bargap=0.28, bargroupgap=0.12, plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
             legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0, font=dict(size=12)),
-            font=dict(family="IBM Plex Sans Thai, sans-serif", size=12, color="#334155"),
+            font=dict(family="Noto Sans Thai, sans-serif", size=12, color="#334155"),
             margin=dict(l=10, r=30, t=42, b=28), height=max(220, 75 + len(chart_items) * 58)
         )
         fig_ov.update_xaxes(showgrid=True, gridcolor="#f1f5f9", zeroline=False, range=[0, max_x * 1.48], nticks=5, tickformat=",d", title_text="จำนวนผู้ป่วย (ราย)")
         fig_ov.update_yaxes(showgrid=False, automargin=True)
         st.plotly_chart(fig_ov, use_container_width=True)
 
-    # การ์ดจัดอันดับแบบ Bullet (ตัดแนวทางรับมือเบื้องต้นออกแล้ว)
-    # กล่องรวม 3 อันดับแบบกล่องเดียว
     with col_action:
         if not top_alerts:
             render_html(f"""
@@ -862,14 +959,12 @@ with tab1:
             render_html(f"""
             <div class="rank-box">
                 <div class="rank-box-header">
-                    <span>🔥 อันดับที่ควรเฝ้าระวังก่อน (สูงสุด 3 อันดับแรก)</span>
+                    <span>อันดับที่ควรเฝ้าระวังก่อน (สูงสุด 3 อันดับแรก)</span>
                 </div>
                 {"".join(items_html)}
             </div>
             """)
-    
 
-    # ตารางสรุปตัวเลขทั้งหมด (กระชับ มีแถบสีสลับบรรทัด และใส่สีประจำจังหวัด)
     render_html('<div class="sec-label">ตารางสรุปตัวเลขทั้งหมด (เรียงลำดับความเสี่ยงจากมากไปน้อย)</div>')
     rows_html = []
     for rank_idx, d in enumerate(view_items, start=1):
@@ -910,16 +1005,14 @@ with tab1:
     """)
 
 # =========================================================
-# แท็บ 2: กราฟแนวโน้มรายโรค (แยกสีตามจังหวัด ไม่ตาลาย)
+# แท็บ 2: กราฟแนวโน้มรายโรค (แยก 2 ช่องเลือก + กราฟเส้นสีน้ำเงิน)
 # =========================================================
 with tab2:
     if len(view_items) == 1:
         d = view_items[0]
     else:
-        # แยกเป็น 2 ช่องคู่กัน (จังหวัด 5 ตัวเลือก + โรค 3 ตัวเลือก)
         c_p, c_d = st.columns(2)
 
-        # ช่องซ้าย: เลือกจังหวัด
         avail_provs = {}
         for it in view_items:
             if it["province_code"] not in avail_provs:
@@ -934,7 +1027,6 @@ with tab2:
             pick_p_code = list(avail_provs.keys())[0]
             c_p.selectbox("จังหวัด", list(avail_provs.values()), disabled=True, key="tab2_prov_fixed")
 
-        # ช่องขวา: เลือกโรคของจังหวัดที่เลือก
         prov_items = [it for it in view_items if it["province_code"] == pick_p_code]
         d_map = {}
         for it in prov_items:
@@ -946,7 +1038,7 @@ with tab2:
 
     pt_sel = get_prov_theme(d["province_code"])
     fc_i, th_i, lt_i, lo_i, hi_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"]), to_int(d["pi_low"]), to_int(d["pi_high"])
-    st_color = "#be123c" if d["is_flagged"] else "#15803d"
+    st_color = "#be123c" if d["is_flagged"] else "#006837"
     st_label = "เกินเกณฑ์เตือน (ควรเฝ้าระวัง)" if d["is_flagged"] else "ต่ำกว่าเกณฑ์ (ปกติ)"
 
     render_html(f"""
@@ -979,7 +1071,6 @@ with tab2:
         fig.add_vrect(x0=prelim["week_dt"].iloc[0] - pd.Timedelta(days=3), x1=prelim["week_dt"].iloc[-1] + pd.Timedelta(days=3), fillcolor="rgba(245, 158, 11, 0.12)", line_width=0)
 
     fig.add_trace(go.Scatter(x=[first_dt, target_dt], y=[th_i, th_i], mode="lines", name=f"เกณฑ์เตือน ({th_i:,} ราย)", line=dict(color="#f59e0b", width=2.2, dash="dot"), hovertemplate=f"เกณฑ์เตือน: {th_i:,} ราย<extra></extra>"))
-    # ใช้สีประจำจังหวัดกับเส้นยอดจริง
     fig.add_trace(go.Scatter(x=hist["week_dt"], y=hist["cases_num"], mode="lines+markers", name=f"ยอดจริง จ.{d['province_name']}", line=dict(color="#2563eb", width=2.4), marker=dict(size=6.5, color="#2563eb", line=dict(color="#ffffff", width=1)), hovertemplate="สัปดาห์ %{x|%d %b %Y}<br>ยอดจริง: %{y:,.0f} ราย<extra></extra>"))
 
     valid = hist.dropna(subset=["cases_num"])
@@ -994,7 +1085,7 @@ with tab2:
     fig.update_layout(
         plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0, font=dict(size=12.5)),
-        font=dict(family="IBM Plex Sans Thai, sans-serif", size=12.5, color="#64748b"),
+        font=dict(family="Noto Sans Thai, sans-serif", size=12.5, color="#64748b"),
         margin=dict(l=45, r=25, t=65, b=45), height=410
     )
     fig.update_xaxes(showgrid=False, tickformat="%b %Y", nticks=7, zeroline=False, automargin=True, range=[first_dt - pd.Timedelta(days=7), target_dt + pd.Timedelta(days=18)])
@@ -1002,7 +1093,7 @@ with tab2:
     st.plotly_chart(fig, use_container_width=True)
 
 # =========================================================
-# แท็บ 3: บันทึกและติดตามผล (ปรับโฉมใหม่ สะอาดและอ่านง่ายขึ้น)
+# แท็บ 3: บันทึกและติดตามผล + ตารางประวัติพับได้ + โหลด CSV
 # =========================================================
 with tab3:
     reg_df = load_registry(selected_prov_code, selected_disease_code)
@@ -1012,7 +1103,6 @@ with tab3:
     else:
         reg_df["month"] = reg_df["target_week"].astype(str).str.slice(0, 7)
 
-        # ส่วนที่ 1: สรุปผลประเมินรายเดือน 4 ตัวชี้วัด
         c_title, c_month = st.columns([3, 1])
         with c_title:
             render_html(f'<div class="sec-label" style="margin-top:0;">สรุปผลประเมินความแม่นยำรายเดือน — {area_title}</div>')
@@ -1043,7 +1133,6 @@ with tab3:
         </div>
         """)
 
-        # ส่วนที่ 2: กล่องบันทึกผล (จัดวางเป็นสัดส่วน พร้อมโชว์ค่าพยากรณ์/เกณฑ์เดิมของรอบที่เลือก)
         with st.container(border=True):
             render_html('<div class="panel-title" style="margin-bottom:8px;">บันทึกผลการตรวจสอบภาคสนาม / ปิดยอดจริง</div>')
             reg_df["label"] = (
@@ -1089,7 +1178,6 @@ with tab3:
                     st.success("บันทึกเรียบร้อยแล้ว")
                     st.rerun()
 
-        # ส่วนที่ 3: พับเก็บทะเบียนประวัติการติดตามผล + ปุ่มดาวน์โหลด CSV
         with st.expander(f"ดูทะเบียนประวัติการติดตามผลทั้งหมด ({len(reg_df):,} รายการ)", expanded=False):
             c_flt, c_dl = st.columns([2.5, 1.2])
             with c_flt:
@@ -1161,3 +1249,13 @@ with tab3:
                     <tbody>{"".join(reg_rows)}</tbody>
                 </table></div>
                 """)
+
+# =========================================================
+# 5. แถบท้ายเว็บไซต์ (Portal Footer)
+# =========================================================
+render_html("""
+<div class="portal-footer">
+    <span>© 2026 สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก • กรมควบคุมโรค กระทรวงสาธารณสุข</span>
+    <span>ระบบสนับสนุนการตัดสินใจเฝ้าระวังโรค (DDS Weekly Surveillance Forecast)</span>
+</div>
+""")
