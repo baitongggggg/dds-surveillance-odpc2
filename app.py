@@ -134,14 +134,38 @@ html, body, [class*="css"] {
 .panel-title { font-size: 14.5px; font-weight: 600; color: #0f172a; margin: 0 0 4px 0; }
 .panel-sub { font-size: 12px; color: #64748b; margin: 0 0 8px 0; }
 
-/* การ์ดอันดับแบบ Bullet อ่านง่าย */
-.rank-card {
-    background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #f43f5e;
-    border-radius: 10px; padding: 12px 15px; margin-bottom: 10px;
+/* กล่องรวม 3 อันดับแบบกล่องเดียว เด่นและอ่านง่าย */
+.rank-box {
+    background: #ffffff;
+    border: 1.5px solid #fda4af;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(244, 63, 94, 0.07);
+    margin-bottom: 10px;
 }
-.rank-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
-.rank-badge { background: #fff1f2; color: #be123c; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.rank-box-header {
+    background: linear-gradient(90deg, #fff1f2 0%, #fff7ed 100%);
+    border-bottom: 1px solid #fecdd3;
+    padding: 10px 15px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #9f1239;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.rank-item {
+    padding: 12px 15px;
+    border-bottom: 1px dashed #fecdd3;
+    transition: background-color 0.15s;
+}
+.rank-item:last-child { border-bottom: none; }
+.rank-item:first-of-type { background-color: #fffafb; }
+.rank-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; }
 .rank-title { font-size: 14.5px; font-weight: 700; color: #0f172a; }
+.rank-b1 { background: #ffe4e6; color: #be123c; border: 1px solid #fda4af; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.rank-b2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.rank-b3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
 .rank-bullets { margin: 4px 0 0 0; padding-left: 18px; color: #334155; font-size: 12.5px; line-height: 1.65; }
 .rank-bullets li { margin-bottom: 2px; }
 
