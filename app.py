@@ -126,7 +126,6 @@ header[data-testid="stHeader"] { background: transparent !important; }
 }
 .sidebar-brand {
     background: linear-gradient(135deg, #005a2f 0%, #007a40 100%);
-    border-bottom: 3px solid #f59e0b;
     border-radius: 10px;
     padding: 14px 16px;
     margin-bottom: 16px;
