@@ -132,7 +132,6 @@ header[data-testid="stHeader"] { background: transparent !important; }
 }
 .sidebar-brand-title { font-size: 14.5px; font-weight: 600; color: #ffffff; margin: 0; }
 .sidebar-brand-sub { font-size: 11.5px; color: #d1fae5; margin: 2px 0 0 0; }
-
 /* ================= 3. Official Portal Tabs ================= */
 .stTabs [data-baseweb="tab-list"] {
     background-color: #ffffff;
@@ -147,14 +146,17 @@ header[data-testid="stHeader"] { background: transparent !important; }
     font-size: 14px !important;
     font-weight: 500 !important;
     color: #4b5563 !important;
-    border-bottom: 3px solid transparent !important;
 }
 .stTabs [aria-selected="true"] {
     color: #006837 !important;
     font-weight: 700 !important;
-    border-bottom: 3px solid #006837 !important;
 }
-.stTabs [data-baseweb="tab-highlight"] { display: none !important; }
+/* เปลี่ยนเส้นไฮไลต์เดิมของ Streamlit จากสีแดงเป็นสีเขียวเส้นเดียว */
+.stTabs [data-baseweb="tab-highlight"],
+div[data-baseweb="tab-highlight"] {
+    background-color: #006837 !important;
+    height: 3px !important;
+} { display: none !important; }
 
 /* ================= 4. Buttons & Inputs ================= */
 .stButton > button[kind="primary"], .stFormSubmitButton > button {
