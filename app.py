@@ -113,7 +113,11 @@ h1, h2, h3, .top-title, .panel-title, .sec-label, .portal-org {
 
 /* ซ่อนแถบสีด้านบนสุด, ปุ่ม Deploy และ Footer เดิมของ Streamlit ให้ดูเป็นเว็บไซต์จริง */
 [data-testid="stDecoration"] { display: none !important; }
-[data-testid="stToolbar"] { visibility: hidden !important; }
+.stDeployButton, [data-testid="stAppDeployButton"] { display: none !important; }
+[data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"], [data-testid="stExpandSidebarButton"] {
+    visibility: visible !important;
+    display: flex !important;
+}
 header[data-testid="stHeader"] { background: transparent !important; height: 2.2rem !important; }
 #MainMenu, footer { visibility: hidden !important; }
 
