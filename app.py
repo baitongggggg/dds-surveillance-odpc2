@@ -594,8 +594,8 @@ with tab1:
         st.plotly_chart(fig_ov, use_container_width=True)
 
     # การ์ดจัดอันดับแบบ Bullet (ตัดแนวทางรับมือเบื้องต้นออกแล้ว)
+    # กล่องรวม 3 อันดับแบบกล่องเดียว
     with col_action:
-        render_html('<div class="sec-label" style="margin-top:0;">อันดับที่ควรเฝ้าระวังก่อน (สูงสุด 3 อันดับแรก)</div>')
         if not top_alerts:
             render_html(f"""
             <div class="safe-card">
@@ -604,17 +604,20 @@ with tab1:
             </div>
             """)
         else:
+            badge_classes = ["rank-b1", "rank-b2", "rank-b3"]
+            items_html = []
             for i, item in enumerate(top_alerts):
                 fc_i, th_i, lt_i = to_int(item["forecast"]), to_int(item["threshold"]), to_int(item["latest_cases"])
                 lo_i, hi_i, diff = to_int(item["pi_low"]), to_int(item["pi_high"]), fc_i - th_i
                 pt = get_prov_theme(item["province_code"])
                 prov_pill = f'<span class="prov-pill" style="background:{pt["bg"]}; color:{pt["color"]}; margin-right:6px;">จ.{item["province_name"]}</span>' if is_all_prov else ""
+                b_cls = badge_classes[min(i, 2)]
 
-                render_html(f"""
-                <div class="rank-card">
+                items_html.append(f"""
+                <div class="rank-item">
                     <div class="rank-head">
                         <div>{prov_pill}<span class="rank-title">{item['disease_name']}</span></div>
-                        <span class="rank-badge">อันดับ #{i+1}</span>
+                        <span class="{b_cls}">อันดับ #{i+1}</span>
                     </div>
                     <ul class="rank-bullets">
                         <li>ยอดคาดสัปดาห์หน้า: <b style="color:#be123c;">{fc_i:,} ราย</b> <span class="muted">(ช่วง 95%: {lo_i:,}–{hi_i:,} ราย)</span></li>
@@ -623,7 +626,17 @@ with tab1:
                     </ul>
                 </div>
                 """)
+
+            render_html(f"""
+            <div class="rank-box">
+                <div class="rank-box-header">
+                    <span>🔥 อันดับที่ควรเฝ้าระวังก่อน (สูงสุด 3 อันดับแรก)</span>
+                </div>
+                {"".join(items_html)}
+            </div>
+            """)
             if len(flagged_items) > 3:
+                render_html(f'<div class="hint-text">ยังมีรายการที่เกินเกณฑ์อีก {len(flagged_items) - 3} รายการ ดูทั้งหมดได้ในตารางด้านล่าง</div>')
                 render_html(f'<div class="hint-text">ยังมีรายการที่เกินเกณฑ์อีก {len(flagged_items) - 3} รายการ ดูทั้งหมดได้ในตารางด้านล่าง</div>')
 
     # ตารางสรุปตัวเลขทั้งหมด (กระชับ มีแถบสีสลับบรรทัด และใส่สีประจำจังหวัด)
