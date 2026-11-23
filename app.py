@@ -593,21 +593,57 @@ with st.sidebar:
     payload = latest_json if picked_str == latest_json["meta"]["cutoff_date"] else predict_for_date(weekly_df, picked_str)
     sync_to_registry(payload)
 
-    # 2. เลือกจังหวัดแบบติ๊ก (Checkbox)
+    # 2. เลือกจังหวัดแบบติ๊ก (มีปุ่มเลือกทุกจังหวัด)
     render_html('<div class="sb-sec-hdr">📍 2. เลือกจังหวัด (สคร.2)</div>')
+    all_p_codes = [p["province_code"] for p in payload["provinces"]]
+
+    if "chk_p_all" not in st.session_state:
+        st.session_state["chk_p_all"] = True
+    for pc in all_p_codes:
+        if f"chk_p_{pc}" not in st.session_state:
+            st.session_state[f"chk_p_{pc}"] = True
+
+    def _toggle_all_p():
+        val = st.session_state["chk_p_all"]
+        for pc in all_p_codes:
+            st.session_state[f"chk_p_{pc}"] = val
+
+    def _sync_all_p():
+        st.session_state["chk_p_all"] = all(st.session_state[f"chk_p_{pc}"] for pc in all_p_codes)
+
+    st.checkbox("**เลือกทุกจังหวัด (ทั้ง 5 จว.)**", key="chk_p_all", on_change=_toggle_all_p)
+
     selected_provinces_objs = []
     for p in payload["provinces"]:
         pt = get_prov_theme(p["province_code"])
         chk_lbl = f"{pt['dot']} จ.{p['province_name']} (เตือน {p['alert_count']} โรค)"
-        if st.checkbox(chk_lbl, value=True, key=f"chk_p_{p['province_code']}"):
+        if st.checkbox(chk_lbl, key=f"chk_p_{p['province_code']}", on_change=_sync_all_p):
             selected_provinces_objs.append(p)
 
-    # 3. เลือกโรคแบบติ๊ก (Checkbox)
+    # 3. เลือกโรคแบบติ๊ก (มีปุ่มเลือกทุกโรค)
     render_html('<div class="sb-sec-hdr">🦠 3. เลือกกลุ่มโรคเฝ้าระวัง</div>')
+    all_d_codes = ["02", "15", "31"]
+
+    if "chk_d_all" not in st.session_state:
+        st.session_state["chk_d_all"] = True
+    for dc in all_d_codes:
+        if f"chk_d_{dc}" not in st.session_state:
+            st.session_state[f"chk_d_{dc}"] = True
+
+    def _toggle_all_d():
+        val = st.session_state["chk_d_all"]
+        for dc in all_d_codes:
+            st.session_state[f"chk_d_{dc}"] = val
+
+    def _sync_all_d():
+        st.session_state["chk_d_all"] = all(st.session_state[f"chk_d_{dc}"] for dc in all_d_codes)
+
+    st.checkbox("**เลือกทุกโรค (ทั้ง 3 โรค)**", key="chk_d_all", on_change=_toggle_all_d)
+
     selected_disease_codes = []
-    for d_code in ["02", "15", "31"]:
+    for d_code in all_d_codes:
         d_name = DISEASE_NAMES.get(d_code, d_code)
-        if st.checkbox(f"{d_code} - {d_name}", value=True, key=f"chk_d_{d_code}"):
+        if st.checkbox(f"{d_code} - {d_name}", key=f"chk_d_{d_code}", on_change=_sync_all_d):
             selected_disease_codes.append(d_code)
 
     # 4. กล่องขั้นตอนการใช้งานเว็บนี้แบบเด่นๆ
