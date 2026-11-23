@@ -457,9 +457,11 @@ def load_registry(prov_code=None, disease_code_filter=None):
     df_r["province_code"] = df_r["province_code"].astype(str).str.strip()
     df_r["disease_code"] = df_r["disease_code"].astype(str).str.strip().str.zfill(2)
     if prov_code is not None:
-        df_r = df_r[df_r["province_code"] == str(prov_code)].copy()
+        p_list = [str(x) for x in prov_code] if isinstance(prov_code, list) else [str(prov_code)]
+        df_r = df_r[df_r["province_code"].isin(p_list)].copy()
     if disease_code_filter is not None:
-        df_r = df_r[df_r["disease_code"] == str(disease_code_filter).zfill(2)].copy()
+        d_list = [str(x).zfill(2) for x in disease_code_filter] if isinstance(disease_code_filter, list) else [str(disease_code_filter).zfill(2)]
+        df_r = df_r[df_r["disease_code"].isin(d_list)].copy()
     return df_r
 
 
@@ -572,71 +574,97 @@ latest_cutoff = pd.to_datetime(latest_json["meta"]["cutoff_date"]).date()
 default_date = min(max(latest_cutoff, min_date), max_date)
 
 with st.sidebar:
-    st.markdown("### ตัวกรองแดชบอร์ด")
+    render_html("""
+    <div class="sidebar-brand">
+        <div class="sidebar-brand-title">🩺 สคร.2 จ.พิษณุโลก</div>
+        <div class="sidebar-brand-sub">ระบบเฝ้าระวังและชี้เป้าโรค (DDS)</div>
+    </div>
+    """)
+
+    # 1. เลือกวันตัดข้อมูล
+    render_html('<div class="sb-sec-hdr">📅 1. วันตัดข้อมูล (ถึงวันปัจจุบัน)</div>')
     picked_date = st.date_input(
-        "1. วันตัดข้อมูล (เลือกได้อิสระถึงวันปัจจุบัน)",
-        value=default_date, min_value=min_date, max_value=max_date
+        "วันตัดข้อมูล",
+        value=default_date, min_value=min_date, max_value=max_date,
+        label_visibility="collapsed"
     )
     picked_str = picked_date.strftime("%Y-%m-%d")
 
     payload = latest_json if picked_str == latest_json["meta"]["cutoff_date"] else predict_for_date(weekly_df, picked_str)
     sync_to_registry(payload)
 
-    total_flagged_region = sum(1 for p in payload["provinces"] for d in p["all_diseases"] if d["is_flagged"])
-    prov_map = {f"ทุกจังหวัด (สคร.2 ทั้ง {len(payload['provinces'])} จว.)  •  เตือน {total_flagged_region} รายการ": None}
+    # 2. เลือกจังหวัดแบบติ๊ก (Checkbox)
+    render_html('<div class="sb-sec-hdr">📍 2. เลือกจังหวัด (สคร.2)</div>')
+    selected_provinces_objs = []
     for p in payload["provinces"]:
         pt = get_prov_theme(p["province_code"])
-        prov_map[f"{pt['dot']} จ.{p['province_name']} ({p['province_code']})  •  เฝ้าระวัง {p['alert_count']} โรค"] = p
+        chk_lbl = f"{pt['dot']} จ.{p['province_name']} (เตือน {p['alert_count']} โรค)"
+        if st.checkbox(chk_lbl, value=True, key=f"chk_p_{p['province_code']}"):
+            selected_provinces_objs.append(p)
 
-    prov_label = st.selectbox("2. เลือกจังหวัด", list(prov_map.keys()))
-    selected_prov_obj = prov_map[prov_label]
-    is_all_prov = selected_prov_obj is None
-    selected_prov_code = None if is_all_prov else selected_prov_obj["province_code"]
-
-    scope_provinces = payload["provinces"] if is_all_prov else [selected_prov_obj]
-    scope_all_items = [d for p in scope_provinces for d in p["all_diseases"]]
-
-    disease_filter_map = {"ทุกโรค (ภาพรวม 3 โรคหลัก)": None}
-    for d_code in sorted(list({d["disease_code"] for d in scope_all_items})):
+    # 3. เลือกโรคแบบติ๊ก (Checkbox)
+    render_html('<div class="sb-sec-hdr">🦠 3. เลือกกลุ่มโรคเฝ้าระวัง</div>')
+    selected_disease_codes = []
+    for d_code in ["02", "15", "31"]:
         d_name = DISEASE_NAMES.get(d_code, d_code)
-        flagged_cnt = sum(1 for d in scope_all_items if d["disease_code"] == d_code and d["is_flagged"])
-        dot = "🔴" if flagged_cnt > 0 else "🟢"
-        suffix = f" (เตือน {flagged_cnt} จว.)" if (is_all_prov and flagged_cnt > 0) else ""
-        disease_filter_map[f"{dot} {d_code} - {d_name}{suffix}"] = d_code
+        if st.checkbox(f"{d_code} - {d_name}", value=True, key=f"chk_d_{d_code}"):
+            selected_disease_codes.append(d_code)
 
-    selected_disease_label = st.selectbox("3. เลือกโรค", list(disease_filter_map.keys()))
-    selected_disease_code = disease_filter_map[selected_disease_label]
-
-    st.divider()
-    with st.expander("ขั้นตอนการใช้งานเว็บนี้", expanded=False):
-        st.markdown("""
-        **1. เลือกข้อมูลที่ต้องการดู (ด้านบน)**
-        - เลือก **วันตัดข้อมูล** (เลือกย้อนหลังเพื่อจำลองรอบพยากรณ์ได้)
-        - เลือก **จังหวัด** (ดูภาพรวม 5 จังหวัด สคร.2 หรือรายจังหวัด) และเลือก **โรค**
-
-        **2. อ่านผลชี้เป้าและกราฟ (แท็บ 1–2)**
-        - **แท่งสีแดง / การ์ดอันดับ #1–#3:** โรคที่คาดว่าจะเกินเกณฑ์เตือนและควรตรวจสอบก่อน
-        - **ดาวสีแดงในกราฟ:** ยอดคาดการณ์สัปดาห์หน้า หากอยู่เหนือเส้นประสีส้มแปลว่าต้องเฝ้าระวัง
-        - **แถบสีเหลืองในกราฟ:** ยอด 1–2 สัปดาห์ล่าสุดที่อาจยังมีรายงานค้างส่ง (ข้อมูลเบื้องต้น)
-
-        **3. บันทึกผลและประเมินความแม่น (แท็บ 3)**
-        - เมื่อลงตรวจพื้นที่ ให้กรอก **เวลาเริ่มตรวจ, ผลภาคสนาม, การดำเนินการ**
-        - เมื่อครบ 1–2 สัปดาห์และยอดนิ่งแล้ว ให้กลับมากรอก **ยอดจริงนิ่งแล้ว** ระบบจะคำนวณตัวชี้วัดความแม่น 4 ตัวให้อัตโนมัติ
-        """)
+    # 4. กล่องขั้นตอนการใช้งานเว็บนี้แบบเด่นๆ
+    render_html("""
+    <div class="guide-card">
+        <div class="guide-hdr">💡 ขั้นตอนการใช้งานเว็บนี้</div>
+        <div class="guide-step">
+            <div class="guide-num">1</div>
+            <div><b>เลือกตัวกรองด้านบน</b> — กำหนดวันตัดข้อมูล ติ๊กเลือกจังหวัด และโรคที่ต้องการติดตาม</div>
+        </div>
+        <div class="guide-step">
+            <div class="guide-num">2</div>
+            <div><b>ดูผลชี้เป้าและกราฟ (แท็บ 1–2)</b> — โรคที่ <b style="color:#be123c;">เกินเกณฑ์เตือน</b> จะถูกจัดอันดับ #1–#3 ให้ตรวจสอบก่อน</div>
+        </div>
+        <div class="guide-step">
+            <div class="guide-num">3</div>
+            <div><b>บันทึกและปิดยอด (แท็บ 3)</b> — กรอกผลลงตรวจจริงและยอดจริงนิ่งแล้ว เพื่อวัดความแม่นยำรายเดือน</div>
+        </div>
+    </div>
+    """)
 
 meta = payload["meta"]
 
-if selected_disease_code is None:
-    view_items = sorted(scope_all_items, key=risk_sort_key, reverse=True)
+# ตรวจสอบกรณีผู้ใช้เอาติ๊กออกทั้งหมด
+if not selected_provinces_objs or not selected_disease_codes:
+    st.warning("กรุณาติ๊กเลือกอย่างน้อย 1 จังหวัด และ 1 โรค จากแถบเมนูด้านซ้ายเพื่อแสดงข้อมูลครับ")
+    st.stop()
+
+# จัดเตรียมตัวแปรให้ใช้ร่วมกับทั้ง 3 แท็บได้เหมือนเดิม
+selected_prov_code = [p["province_code"] for p in selected_provinces_objs]
+selected_disease_code = selected_disease_codes
+is_all_prov = len(selected_provinces_objs) > 1
+selected_prov_obj = selected_provinces_objs[0]
+
+scope_all_items = [d for p in selected_provinces_objs for d in p["all_diseases"]]
+view_items = sorted(
+    [d for d in scope_all_items if d["disease_code"] in selected_disease_codes],
+    key=risk_sort_key,
+    reverse=True
+)
+
+if len(selected_disease_codes) == len(DISEASE_NAMES):
     disease_scope_text = "ทุกโรคในขอบเขต (3 โรค)"
+elif len(selected_disease_codes) == 1:
+    disease_scope_text = DISEASE_NAMES.get(selected_disease_codes[0], selected_disease_codes[0])
 else:
-    view_items = sorted([d for d in scope_all_items if d["disease_code"] == selected_disease_code], key=risk_sort_key, reverse=True)
-    disease_scope_text = DISEASE_NAMES.get(selected_disease_code, selected_disease_code)
+    disease_scope_text = f"เลือก {len(selected_disease_codes)} โรค"
 
 flagged_items = [d for d in view_items if d["is_flagged"]]
 top_alerts = flagged_items[:3]
-area_title = f"ภาพรวม สคร.2 ({len(payload['provinces'])} จังหวัด)" if is_all_prov else f"จังหวัด{selected_prov_obj['province_name']}"
 
+if len(selected_provinces_objs) == len(payload["provinces"]):
+    area_title = f"ภาพรวม สคร.2 ({len(payload['provinces'])} จังหวัด)"
+elif len(selected_provinces_objs) == 1:
+    area_title = f"จังหวัด{selected_prov_obj['province_name']}"
+else:
+    area_title = f"พื้นที่ที่เลือก ({len(selected_provinces_objs)} จังหวัด)"
 # =========================================================
 # 4. ส่วนหัวแดชบอร์ด + 3 แท็บหลัก
 # =========================================================
