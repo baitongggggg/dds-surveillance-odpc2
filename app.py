@@ -867,9 +867,7 @@ with tab1:
                 {"".join(items_html)}
             </div>
             """)
-            if len(flagged_items) > 3:
-                render_html(f'<div class="hint-text">ยังมีรายการที่เกินเกณฑ์อีก {len(flagged_items) - 3} รายการ ดูทั้งหมดได้ในตารางด้านล่าง</div>')
-                render_html(f'<div class="hint-text">ยังมีรายการที่เกินเกณฑ์อีก {len(flagged_items) - 3} รายการ ดูทั้งหมดได้ในตารางด้านล่าง</div>')
+    
 
     # ตารางสรุปตัวเลขทั้งหมด (กระชับ มีแถบสีสลับบรรทัด และใส่สีประจำจังหวัด)
     render_html('<div class="sec-label">ตารางสรุปตัวเลขทั้งหมด (เรียงลำดับความเสี่ยงจากมากไปน้อย)</div>')
