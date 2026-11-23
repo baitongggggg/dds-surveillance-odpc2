@@ -11,15 +11,18 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 warnings.filterwarnings("ignore")
 
 st.set_page_config(
-    page_title="แดชบอร์ดชี้เป้าโรคเฝ้าระวัง DDS",
+    page_title="ชี้เป้าโรคเฝ้าระวังสัปดาห์หน้า (DDS สคร.2)",
     page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 
+# =========================================================
+# ฟังก์ชันช่วยจัดรูปแบบและคำนวณ
+# =========================================================
 def render_html(html_str):
-    """ล้างช่องว่างหน้าบรรทัด กันไม่ให้ Streamlit แสดงเป็นโค้ด HTML ดิบ"""
+    """ล้างช่องว่างหน้าบรรทัด กันไม่ให้ Streamlit แสดงเป็นโค้ด HTML"""
     cleaned = "\n".join(line.strip() for line in html_str.splitlines() if line.strip())
     st.markdown(cleaned, unsafe_allow_html=True)
 
@@ -42,30 +45,31 @@ def fmt_int(val):
         return "-"
 
 
-def calc_threshold(train_series):
-    """คำนวณเกณฑ์เตือนเป็นจำนวนเต็ม และป้องกันเกณฑ์เป็น 0"""
-    th = int(round(float(np.percentile(train_series, 75))))
+def calc_threshold(series):
+    """คำนวณเกณฑ์เตือนเป็นจำนวนเต็ม (เปอร์เซ็นไทล์ 75 ของ 2 ปีแรก และขั้นต่ำ 1 ราย)"""
+    valid = series.dropna()
+    if len(valid) == 0:
+        return 1
+    th = int(round(float(np.percentile(valid, 75))))
     if th == 0:
-        if train_series.max() > 0:
-            th = max(1, int(round(float(np.percentile(train_series, 90)))))
-        else:
-            th = 1
+        th = max(1, int(round(float(np.percentile(valid, 90))))) if valid.max() > 0 else 1
     return th
 
 
 def risk_sort_key(d):
-    """เรียงลำดับความเสี่ยง: เกินเกณฑ์ก่อน -> อัตราส่วนเกินเกณฑ์มากสุด -> จำนวนรายที่เกินเกณฑ์มากสุด"""
-    fc_i = to_int(d["forecast"])
-    th_i = to_int(d["threshold"])
+    """เรียงลำดับความเสี่ยง: เกินเกณฑ์ก่อน -> อัตราส่วนเกินเกณฑ์มากสุด -> จำนวนรายที่เกินเกณฑ์"""
+    fc_i, th_i = to_int(d["forecast"]), to_int(d["threshold"])
     ratio = (fc_i / th_i) if th_i > 0 else float(fc_i)
     return (1 if d["is_flagged"] else 0, ratio, fc_i - th_i, fc_i)
 
 
-DISEASE_ACTION_GUIDE = {
-    "02": "ตรวจเช็กการกระจุกตัวรายอำเภอ/โรงเรียน/โรงงาน ตรวจสอบแหล่งน้ำดื่ม-อาหาร และแจ้งทีม SRRT พื้นที่เฝ้าระวังสุขาภิบาล",
-    "15": "เฝ้าระวังการระบาดเป็นกลุ่มก้อนในโรงเรียน/สถานที่แออัด ตรวจผล Lab ยืนยันสายพันธุ์ และเร่งสื่อสารป้องกันในกลุ่มเสี่ยง",
-    "31": "ติดตามกลุ่มเสี่ยงสูง (เด็กเล็กและผู้สูงอายุ) เช็กสัดส่วนผู้ป่วยอาการรุนแรง/ใส่เครื่องช่วยหายใจ และดูความเชื่อมโยงกับไข้หวัดใหญ่"
-}
+def ratio_text(num, den):
+    return f"{num}/{den} ({num/den:.0%})" if den > 0 else f"{num}/0 (ไม่มีตัวหาร)"
+
+
+def clean_str(val):
+    return "" if pd.isna(val) or str(val).strip().lower() == "nan" else str(val).strip()
+
 
 DISEASE_NAMES = {
     "02": "โรคอุจจาระร่วงเฉียบพลัน",
@@ -73,13 +77,18 @@ DISEASE_NAMES = {
     "31": "โรคปอดอักเสบ"
 }
 
+DISEASE_ACTION_GUIDE = {
+    "02": "ตรวจเช็กการกระจุกตัวรายอำเภอ/โรงเรียน/โรงงาน ตรวจสอบแหล่งน้ำดื่ม-อาหาร และแจ้งทีม SRRT พื้นที่เฝ้าระวังสุขาภิบาล",
+    "15": "เฝ้าระวังการระบาดเป็นกลุ่มก้อนในโรงเรียน/สถานที่แออัด ตรวจผล Lab ยืนยันสายพันธุ์ และเร่งสื่อสารป้องกันในกลุ่มเสี่ยง",
+    "31": "ติดตามกลุ่มเสี่ยงสูง (เด็กเล็กและผู้สูงอายุ) เช็กสัดส่วนผู้ป่วยอาการรุนแรง และดูความเชื่อมโยงกับไข้หวัดใหญ่"
+}
+
 WEEKLY_FILE = "weekly_summary.csv"
 JSON_FILE = "dashboard_data.json"
-BACKTEST_FILE = "backtest_report.csv"
 CSV_REGISTRY = "tracking_registry.csv"
 
 # =========================================================
-# สไตล์มินิมอล คลีน อ่านสบายตา
+# สไตล์หน้าเว็บ: โทนสว่าง มินิมอล อ่านสบายตา
 # =========================================================
 render_html("""
 <style>
@@ -91,122 +100,51 @@ html, body, [class*="css"] {
     color: #1e293b;
 }
 .stApp { background-color: #f8fafc; }
-[data-testid="stSidebar"] {
-    background-color: #ffffff;
-    border-right: 1px solid #e2e8f0;
-}
+[data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e2e8f0; }
+.block-container { padding-top: 1.4rem !important; padding-bottom: 2.5rem !important; max-width: 1140px !important; }
 
-.block-container {
-    padding-top: 1.4rem !important;
-    padding-bottom: 2.5rem !important;
-    max-width: 1140px !important;
-}
-
-h1 { font-size: 1.35rem !important; font-weight: 700 !important; color: #0f172a !important; }
-h2 { font-size: 1.05rem !important; font-weight: 600 !important; color: #0f172a !important; }
-h3 { font-size: 0.95rem !important; font-weight: 600 !important; color: #334155 !important; }
-
-.stTabs [data-baseweb="tab-list"] {
-    gap: 20px;
-    border-bottom: 1px solid #e2e8f0;
-    margin-bottom: 14px;
-}
-.stTabs [data-baseweb="tab"] {
-    padding: 8px 4px;
-    font-size: 13.5px !important;
-    font-weight: 500;
-    color: #64748b;
-}
-.stTabs [aria-selected="true"] {
-    color: #0284c7 !important;
-    font-weight: 600 !important;
-}
+.stTabs [data-baseweb="tab-list"] { gap: 20px; border-bottom: 1px solid #e2e8f0; margin-bottom: 14px; }
+.stTabs [data-baseweb="tab"] { padding: 8px 4px; font-size: 13.5px !important; font-weight: 500; color: #64748b; }
+.stTabs [aria-selected="true"] { color: #0284c7 !important; font-weight: 600 !important; }
 
 .top-header {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-left: 4px solid #0284c7;
-    border-radius: 12px;
-    padding: 14px 20px;
-    margin-bottom: 14px;
+    background: #ffffff; border: 1px solid #e2e8f0; border-left: 4px solid #38bdf8;
+    border-radius: 12px; padding: 14px 20px; margin-bottom: 14px;
 }
 .top-title { font-size: 19px; font-weight: 700; color: #0f172a; margin: 0 0 6px 0; }
 .meta-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.meta-tag {
-    background: #f1f5f9; color: #475569; padding: 3px 10px;
-    border-radius: 999px; font-size: 12px;
-}
-.meta-tag-blue {
-    background: #e0f2fe; color: #0369a1; padding: 3px 10px;
-    border-radius: 999px; font-size: 12px; font-weight: 600;
-}
-.meta-tag-warn {
-    background: #fffbeb; color: #b45309; border: 1px solid #fde68a;
-    padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500;
-}
+.meta-tag { background: #f1f5f9; color: #475569; padding: 3px 10px; border-radius: 999px; font-size: 12px; }
+.meta-tag-blue { background: #e0f2fe; color: #0369a1; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.meta-tag-warn { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; }
 
-.kpi-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 10px;
-    margin: 4px 0 16px 0;
-}
-.kpi-card {
-    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;
-    padding: 13px 16px;
-}
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 4px 0 16px 0; }
+.kpi-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 13px 16px; }
 .kpi-lbl { font-size: 12px; color: #64748b; }
 .kpi-val { font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 3px; }
 .kpi-note { font-size: 11.5px; color: #64748b; margin-top: 3px; }
 
-.panel-box {
-    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 14px 18px; margin-bottom: 14px;
-}
+.panel-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; }
 .panel-title { font-size: 14.5px; font-weight: 600; color: #0f172a; margin: 0 0 4px 0; }
 .panel-sub { font-size: 12px; color: #64748b; margin: 0 0 10px 0; }
 
 .action-card {
-    background: #ffffff; border: 1px solid #fecdd3; border-left: 4px solid #e11d48;
+    background: #ffffff; border: 1px solid #fecdd3; border-left: 4px solid #f43f5e;
     border-radius: 10px; padding: 13px 15px; margin-bottom: 10px;
 }
 .action-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
-.action-rank {
-    background: #fff1f2; color: #be123c; font-size: 11.5px;
-    font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
-}
+.action-rank { background: #fff1f2; color: #be123c; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
 .action-name { font-size: 15px; font-weight: 700; color: #0f172a; }
-.action-prov {
-    display: inline-block; background: #f1f5f9; color: #334155;
-    font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 6px; margin-left: 6px;
-}
+.action-prov { display: inline-block; background: #f1f5f9; color: #334155; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 6px; margin-left: 6px; }
 .action-stats { font-size: 12.5px; color: #334155; margin-bottom: 7px; }
-.action-guide {
-    background: #f8fafc; border-radius: 8px; padding: 8px 10px;
-    font-size: 12px; color: #475569; line-height: 1.55;
-}
+.action-guide { background: #f8fafc; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #475569; line-height: 1.55; }
 
-.safe-card {
-    background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a;
-    border-radius: 10px; padding: 15px 18px; color: #166534; font-size: 13.5px; line-height: 1.6;
-}
-.info-strip {
-    background: #f0f9ff; border: 1px solid #bae6fd; border-left: 3px solid #0284c7;
-    color: #0c4a6e; padding: 10px 14px; border-radius: 8px; font-size: 12.5px; margin-bottom: 12px; line-height: 1.6;
-}
+.safe-card { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #22c55e; border-radius: 10px; padding: 15px 18px; color: #166534; font-size: 13.5px; line-height: 1.6; }
+.info-strip { background: #f0f9ff; border: 1px solid #bae6fd; border-left: 3px solid #38bdf8; color: #0c4a6e; padding: 10px 14px; border-radius: 8px; font-size: 12.5px; margin-bottom: 12px; line-height: 1.6; }
 
-.tbl-wrap {
-    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;
-    overflow-x: auto; margin-top: 6px; margin-bottom: 14px;
-}
+.tbl-wrap { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; overflow-x: auto; margin-top: 6px; margin-bottom: 14px; }
 .m-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.m-table th {
-    background: #f8fafc; color: #475569; font-weight: 600; font-size: 12px;
-    padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; white-space: nowrap;
-}
-.m-table td {
-    padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #1e293b; vertical-align: middle;
-}
+.m-table th { background: #f8fafc; color: #475569; font-weight: 600; font-size: 12px; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+.m-table td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #1e293b; vertical-align: middle; }
 .m-table tr:last-child td { border-bottom: none; }
 .m-table tbody tr:hover { background-color: #f8fafc; }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -215,7 +153,6 @@ h3 { font-size: 0.95rem !important; font-weight: 600 !important; color: #334155 
 
 .badge-red { background: #fff1f2; color: #be123c; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
 .badge-ok { background: #f0fdf4; color: #15803d; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
-.badge-blue { background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .sec-label { font-size: 14px; font-weight: 600; color: #334155; margin: 12px 0 6px 0; }
 .hint-text { font-size: 12px; color: #64748b; margin-top: 4px; }
 </style>
@@ -223,7 +160,7 @@ h3 { font-size: 0.95rem !important; font-weight: 600 !important; color: #334155 
 
 
 # =========================================================
-# 1. ระบบจัดเก็บทะเบียนติดตามผล (PostgreSQL ออนไลน์ / CSV สำรอง)
+# 1. ระบบจัดเก็บทะเบียนติดตามผล (PostgreSQL / CSV)
 # =========================================================
 @st.cache_resource
 def get_db_engine():
@@ -254,26 +191,18 @@ def ensure_table(engine):
 
 
 def sync_to_registry(payload):
-    """บันทึกรอบพยากรณ์ครบทุกโรค โดยคงค่าพยากรณ์และเกณฑ์ฉบับส่งไว้ไม่ให้ถูกแก้ทับ"""
+    """บันทึกรอบพยากรณ์ครบทุกโรค โดยห้ามเขียนทับค่าพยากรณ์และเกณฑ์ฉบับส่ง"""
     rows = []
     cutoff = payload["meta"]["cutoff_date"]
     for p in payload["provinces"]:
         for d in p["all_diseases"]:
             rows.append({
-                "run_id": d["run_id"],
-                "province_code": str(d["province_code"]),
-                "province_name": str(d["province_name"]),
-                "disease_code": str(d["disease_code"]),
-                "disease_name": str(d["disease_name"]),
-                "target_week": str(d["target_week"]),
-                "frozen_forecast": to_int(d["forecast"]),
-                "frozen_threshold": to_int(d["threshold"]),
-                "is_flagged": bool(d["is_flagged"]),
-                "alert_sent_time": f"{cutoff} 09:00",
-                "check_start_time": "",
-                "field_result": "",
-                "action_taken": "",
-                "settled_actual_cases": None
+                "run_id": d["run_id"], "province_code": str(d["province_code"]),
+                "province_name": str(d["province_name"]), "disease_code": str(d["disease_code"]),
+                "disease_name": str(d["disease_name"]), "target_week": str(d["target_week"]),
+                "frozen_forecast": to_int(d["forecast"]), "frozen_threshold": to_int(d["threshold"]),
+                "is_flagged": bool(d["is_flagged"]), "alert_sent_time": f"{cutoff} 09:00",
+                "check_start_time": "", "field_result": "", "action_taken": "", "settled_actual_cases": None
             })
 
     engine = get_db_engine()
@@ -328,10 +257,8 @@ def update_registry(run_id, prov_code, disease_code, target_week, check_time, fi
                 UPDATE tracking_registry
                 SET check_start_time=:ct, field_result=:fr, action_taken=:at, settled_actual_cases=:ac
                 WHERE run_id=:rid AND province_code=:pc AND disease_code=:dc AND target_week=:tw;
-            """), {
-                "ct": check_time, "fr": field_res, "at": action_txt, "ac": actual_val,
-                "rid": run_id, "pc": str(prov_code), "dc": str(disease_code), "tw": str(target_week)
-            })
+            """), {"ct": check_time, "fr": field_res, "at": action_txt, "ac": actual_val,
+                   "rid": run_id, "pc": str(prov_code), "dc": str(disease_code), "tw": str(target_week)})
     else:
         df_all = pd.read_csv(CSV_REGISTRY, dtype={"province_code": str, "disease_code": str})
         m = (
@@ -340,15 +267,14 @@ def update_registry(run_id, prov_code, disease_code, target_week, check_time, fi
             (df_all["disease_code"].str.zfill(2) == str(disease_code).zfill(2)) &
             (df_all["target_week"] == str(target_week))
         )
-        df_all.loc[m, "check_start_time"] = check_time
-        df_all.loc[m, "field_result"] = field_res
-        df_all.loc[m, "action_taken"] = action_txt
-        df_all.loc[m, "settled_actual_cases"] = actual_val
+        df_all.loc[m, ["check_start_time", "field_result", "action_taken", "settled_actual_cases"]] = [
+            check_time, field_res, action_txt, actual_val
+        ]
         df_all.to_csv(CSV_REGISTRY, index=False, encoding="utf-8-sig")
 
 
 # =========================================================
-# 2. โหลดข้อมูลยอดรวมและคำนวณพยากรณ์ตามวันตัดรอบ
+# 2. โหลดข้อมูลยอดรวมและคำนวณพยากรณ์ตามวันที่เลือก
 # =========================================================
 @st.cache_data
 def load_files():
@@ -368,6 +294,8 @@ def predict_for_date(weekly_df, cutoff_str):
     df_all = weekly_df.sort_values(["province_code", "disease_code", "week_start"]).copy()
     cutoff_wk = pd.to_datetime(cutoff_str).to_period("W-SAT").start_time
     df_cut = df_all[df_all["week_start"] <= cutoff_wk].copy()
+    if df_cut.empty:
+        df_cut = df_all[df_all["week_start"] == df_all["week_start"].min()].copy()
 
     last_wk = df_cut["week_start"].max()
     target_week = (last_wk + pd.Timedelta(weeks=1)).strftime("%Y-%m-%d")
@@ -381,7 +309,7 @@ def predict_for_date(weekly_df, cutoff_str):
     for (p_code, p_name), p_grp in df_cut.groupby(["province_code", "province_name"]):
         diseases = []
         for d_code, grp in p_grp.groupby("disease_code"):
-            s = grp.set_index("week_start")["cases"].ffill().fillna(0)
+            s = grp.set_index("week_start")["cases"].astype(float).interpolate(method="linear").ffill().bfill().fillna(0)
             th = calc_threshold(s.iloc[:min(104, len(s))])
             try:
                 m = ExponentialSmoothing(s, trend=None, seasonal=None).fit()
@@ -396,122 +324,83 @@ def predict_for_date(weekly_df, cutoff_str):
             flagged = fc >= th
 
             diseases.append({
-                "run_id": run_id,
-                "province_code": p_code,
-                "province_name": p_name,
-                "disease_code": d_code,
-                "disease_name": DISEASE_NAMES.get(d_code, d_code),
-                "target_week": target_week,
-                "latest_cases": int(round(float(s.iloc[-1]))),
-                "forecast": fc,
-                "pi_low": pi_low,
-                "pi_high": pi_high,
-                "threshold": th,
-                "is_flagged": flagged,
+                "run_id": run_id, "province_code": p_code, "province_name": p_name,
+                "disease_code": d_code, "disease_name": DISEASE_NAMES.get(d_code, d_code),
+                "target_week": target_week, "latest_cases": int(round(float(s.iloc[-1]))),
+                "forecast": fc, "pi_low": pi_low, "pi_high": pi_high,
+                "threshold": th, "is_flagged": flagged,
                 "excess_ratio": round(fc / th, 2) if th > 0 else 0.0,
-                "reason": (
-                    f"ยอดคาด {fc:,} ราย สูงกว่าเกณฑ์เตือน {th:,} ราย"
-                    if flagged else
-                    f"ยอดคาด {fc:,} ราย ต่ำกว่าเกณฑ์เตือน {th:,} ราย"
-                ),
+                "reason": f"ยอดคาด {fc:,} ราย สูงกว่าเกณฑ์ {th:,} ราย" if flagged else f"ยอดคาด {fc:,} ราย ต่ำกว่าเกณฑ์ {th:,} ราย",
                 "history": [
-                    {
-                        "week": r["week_start"].strftime("%Y-%m-%d"),
-                        "cases": None if pd.isna(r["cases"]) else int(round(float(r["cases"]))),
-                        "status": r["data_status"]
-                    }
+                    {"week": r["week_start"].strftime("%Y-%m-%d"), "cases": None if pd.isna(r["cases"]) else int(round(float(r["cases"]))), "status": r["data_status"]}
                     for _, r in grp.tail(52).iterrows()
                 ]
             })
 
         top_alerts = sorted([d for d in diseases if d["is_flagged"]], key=risk_sort_key, reverse=True)[:3]
         provinces.append({
-            "province_code": p_code,
-            "province_name": p_name,
-            "alert_count": len(top_alerts),
-            "alerts": top_alerts,
-            "all_diseases": diseases
+            "province_code": p_code, "province_name": p_name,
+            "alert_count": len(top_alerts), "alerts": top_alerts, "all_diseases": diseases
         })
 
     return {
-        "meta": {
-            "run_id": run_id,
-            "cutoff_date": cutoff_str,
-            "target_week": target_week,
-            "data_status": df_cut["data_status"].iloc[-1]
-        },
+        "meta": {"run_id": run_id, "cutoff_date": cutoff_str, "target_week": target_week, "data_status": df_cut["data_status"].iloc[-1]},
         "provinces": provinces
     }
 
 
-def ratio_text(num, den):
-    return f"{num}/{den} ({num/den:.0%})" if den > 0 else f"{num}/0 (ไม่มีตัวหาร)"
-
-
-def clean_str(val):
-    return "" if pd.isna(val) or str(val).strip().lower() == "nan" else str(val).strip()
-
-
 # =========================================================
-# 3. แถบเมนูซ้ายมือ (เลือกทุกจังหวัด / รายจังหวัด + เลือกโรค + เปลี่ยนวันที่)
+# 3. แถบเมนูด้านซ้าย (เลือกวันที่ + 5 จังหวัด สคร.2 + 3 โรค + วิธีใช้งาน)
 # =========================================================
 latest_json, weekly_df = load_files()
-min_date = (weekly_df["week_start"].min() + pd.Timedelta(weeks=4)).date()
-max_date = pd.to_datetime(latest_json["meta"]["cutoff_date"]).date()
+min_date = pd.to_datetime("2023-11-23").date()
+max_date = pd.Timestamp.today().date()
+latest_cutoff = pd.to_datetime(latest_json["meta"]["cutoff_date"]).date()
+default_date = min(max(latest_cutoff, min_date), max_date)
 
 with st.sidebar:
     st.markdown("### ตัวกรองแดชบอร์ด")
     picked_date = st.date_input(
-        "วันตัดข้อมูล (เลือกย้อนหลังเพื่อจำลองรอบได้)",
-        value=max_date, min_value=min_date, max_value=max_date
+        "1. วันตัดข้อมูล (เลือกได้อิสระถึงวันปัจจุบัน)",
+        value=default_date, min_value=min_date, max_value=max_date
     )
     picked_str = picked_date.strftime("%Y-%m-%d")
 
     payload = latest_json if picked_str == latest_json["meta"]["cutoff_date"] else predict_for_date(weekly_df, picked_str)
     sync_to_registry(payload)
 
-    # ตัวเลือกที่ 1: เลือก "ทุกจังหวัด" หรือเจาะจงรายจังหวัด
-    total_flagged_region = sum(
-        1 for p in payload["provinces"] for d in p["all_diseases"] if d["is_flagged"]
-    )
-    prov_map = {
-        f"ทุกจังหวัด (ภาพรวม {len(payload['provinces'])} จังหวัด)  •  เตือน {total_flagged_region} รายการ": None
-    }
+    # ตัวเลือกจังหวัด (ภาพรวม สคร.2 หรือรายจังหวัด)
+    total_flagged_region = sum(1 for p in payload["provinces"] for d in p["all_diseases"] if d["is_flagged"])
+    prov_map = {f"ทุกจังหวัด (สคร.2 ทั้ง {len(payload['provinces'])} จว.)  •  เตือน {total_flagged_region} รายการ": None}
     for p in payload["provinces"]:
         prov_map[f"จ.{p['province_name']} ({p['province_code']})  •  เฝ้าระวัง {p['alert_count']} โรค"] = p
 
-    prov_label = st.selectbox("1. เลือกจังหวัด", list(prov_map.keys()))
+    prov_label = st.selectbox("2. เลือกจังหวัด", list(prov_map.keys()))
     selected_prov_obj = prov_map[prov_label]
     is_all_prov = selected_prov_obj is None
     selected_prov_code = None if is_all_prov else selected_prov_obj["province_code"]
 
-    # รวมรายการโรคตามจังหวัดที่เลือก เพื่อสร้างตัวเลือกโรคพร้อมจำนวนสัญญาณเตือน
     scope_provinces = payload["provinces"] if is_all_prov else [selected_prov_obj]
     scope_all_items = [d for p in scope_provinces for d in p["all_diseases"]]
 
-    # ตัวเลือกที่ 2: เลือกโรค
+    # ตัวเลือกโรค (ทุกโรค หรือรายโรค)
     disease_filter_map = {"ทุกโรค (ภาพรวม 3 โรคหลัก)": None}
-    unique_codes = sorted(list({d["disease_code"] for d in scope_all_items}))
-    for d_code in unique_codes:
+    for d_code in sorted(list({d["disease_code"] for d in scope_all_items})):
         d_name = DISEASE_NAMES.get(d_code, d_code)
         flagged_cnt = sum(1 for d in scope_all_items if d["disease_code"] == d_code and d["is_flagged"])
-        if is_all_prov:
-            dot = "🔴" if flagged_cnt > 0 else "🟢"
-            suffix = f" (เตือน {flagged_cnt} จว.)" if flagged_cnt > 0 else " (ปกติ)"
-        else:
-            dot = "🔴" if flagged_cnt > 0 else "🟢"
-            suffix = ""
+        dot = "🔴" if flagged_cnt > 0 else "🟢"
+        suffix = f" (เตือน {flagged_cnt} จว.)" if (is_all_prov and flagged_cnt > 0) else ""
         disease_filter_map[f"{dot} {d_code} - {d_name}{suffix}"] = d_code
 
-    selected_disease_label = st.selectbox("2. เลือกโรคที่ต้องการดู", list(disease_filter_map.keys()))
+    selected_disease_label = st.selectbox("3. เลือกโรค", list(disease_filter_map.keys()))
     selected_disease_code = disease_filter_map[selected_disease_label]
 
     st.divider()
     with st.expander("ขั้นตอนการใช้งานเว็บนี้", expanded=False):
         st.markdown("""
         **1. เลือกข้อมูลที่ต้องการดู (ด้านบน)**
-        - เลือก **วันตัดข้อมูล** (เลือกย้อนหลังเพื่อจำลองรอบได้)
-        - เลือก **จังหวัด** (ดูภาพรวมทุกจังหวัด หรือเจาะจงรายจังหวัด) และเลือก **โรค**
+        - เลือก **วันตัดข้อมูล** (เลือกย้อนหลังเพื่อจำลองรอบพยากรณ์ได้)
+        - เลือก **จังหวัด** (ดูภาพรวม 5 จังหวัด สคร.2 หรือรายจังหวัด) และเลือก **โรค**
 
         **2. อ่านผลชี้เป้าและกราฟ (แท็บ 1–2)**
         - **แท่งสีแดง / การ์ดอันดับ #1–#3:** โรคที่คาดว่าจะเกินเกณฑ์เตือนและควรตรวจสอบก่อน
@@ -521,38 +410,29 @@ with st.sidebar:
         **3. บันทึกผลและประเมินความแม่น (แท็บ 3)**
         - เมื่อลงตรวจพื้นที่ ให้กรอก **เวลาเริ่มตรวจ, ผลภาคสนาม, การดำเนินการ**
         - เมื่อครบ 1–2 สัปดาห์และยอดนิ่งแล้ว ให้กลับมากรอก **ยอดจริงนิ่งแล้ว** ระบบจะคำนวณตัวชี้วัดความแม่น 4 ตัวให้อัตโนมัติ
-
-        ---
-        **คำศัพท์สำคัญ:**
-        - **เกณฑ์เตือน:** ระดับผู้ป่วยปกติของโรคนั้นในจังหวัด (จากสถิติ 2 ปีแรก)
-        - **ช่วงพยากรณ์ 95%:** ช่วงต่ำสุด–สูงสุดที่ยอดผู้ป่วยจริงมีโอกาสเกิดขึ้น
         """)
+
 meta = payload["meta"]
 
-# กรองและเรียงลำดับความเสี่ยงจากมากไปน้อย (อันดับ 1 อยู่บนสุดเสมอ)
+# กรองและเรียงลำดับความเสี่ยงจากมากไปน้อย
 if selected_disease_code is None:
     view_items = sorted(scope_all_items, key=risk_sort_key, reverse=True)
     disease_scope_text = "ทุกโรคในขอบเขต (3 โรค)"
 else:
-    view_items = sorted(
-        [d for d in scope_all_items if d["disease_code"] == selected_disease_code],
-        key=risk_sort_key,
-        reverse=True
-    )
+    view_items = sorted([d for d in scope_all_items if d["disease_code"] == selected_disease_code], key=risk_sort_key, reverse=True)
     disease_scope_text = DISEASE_NAMES.get(selected_disease_code, selected_disease_code)
 
 flagged_items = [d for d in view_items if d["is_flagged"]]
-top_alerts = flagged_items[:3]  # จัดอันดับสูงสุด 3 รายการที่ต้องระวังเป็นอันดับแรก
-
-area_title = f"ภาพรวมทุกจังหวัด ({len(payload['provinces'])} จังหวัด)" if is_all_prov else f"จังหวัด{selected_prov_obj['province_name']}"
+top_alerts = flagged_items[:3]
+area_title = f"ภาพรวม สคร.2 ({len(payload['provinces'])} จังหวัด)" if is_all_prov else f"จังหวัด{selected_prov_obj['province_name']}"
 
 # =========================================================
-# 4. ส่วนหัวแดชบอร์ด
+# 4. ส่วนหัวแดชบอร์ด + 3 แท็บหลักพร้อมใช้งานจริง
 # =========================================================
 status_cls = "meta-tag-warn" if "เบื้องต้น" in str(meta["data_status"]) else "meta-tag"
 render_html(f"""
 <div class="top-header">
-    <div class="top-title">แดชบอร์ดชี้เป้าโรคที่ควรเฝ้าระวังสัปดาห์หน้า — {area_title}</div>
+    <div class="top-title">การชี้เป้าโรคที่ควรเฝ้าระวังสัปดาห์หน้าจากข้อมูล DDS — {area_title}</div>
     <div class="meta-line">
         <span class="meta-tag-blue">ขอบเขตโรค: {disease_scope_text}</span>
         <span class="meta-tag">รหัสรอบ: <b>{meta['run_id']}</b></span>
@@ -563,15 +443,14 @@ render_html(f"""
 </div>
 """)
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "แดชบอร์ดชี้เป้าสัปดาห์หน้า",
     "กราฟแนวโน้มรายโรค",
-    "บันทึกและติดตามผล",
-    "เปรียบเทียบโมเดล"
+    "บันทึกและติดตามผล"
 ])
 
 # =========================================================
-# แท็บ 1: แดชบอร์ดภาพรวม + จัดอันดับโรคที่ต้องระวังก่อน
+# แท็บ 1: แดชบอร์ดชี้เป้าสัปดาห์หน้า
 # =========================================================
 with tab1:
     total_fc = sum(to_int(d["forecast"]) for d in view_items)
@@ -585,8 +464,7 @@ with tab1:
         prov_prefix = f"จ.{t1['province_name']} • " if is_all_prov else ""
         top_risk_note = f"{prov_prefix}คาด {to_int(t1['forecast']):,} ราย (เกณฑ์ {to_int(t1['threshold']):,} ราย)"
     else:
-        top_risk_name = "ยังไม่มีโรคเกินเกณฑ์"
-        top_risk_note = "สถานการณ์อยู่ในเกณฑ์ปกติ"
+        top_risk_name, top_risk_note = "ยังไม่มีโรคเกินเกณฑ์", "สถานการณ์อยู่ในเกณฑ์ปกติ"
 
     alert_color = "#be123c" if len(flagged_items) > 0 else "#15803d"
     unit_lbl = "รายการ (จังหวัด×โรค)" if is_all_prov else "โรค"
@@ -619,12 +497,11 @@ with tab1:
     col_chart, col_action = st.columns([1.25, 1.0], gap="medium")
 
     with col_chart:
-        # แสดงสูงสุด 6 อันดับแรกที่เสี่ยงสูงสุดเพื่อให้กราฟไม่เบียดและอ่านง่าย
         chart_slice = view_items[:6]
-        chart_sub_extra = f" • แสดง {len(chart_slice)} อันดับเสี่ยงสูงสุดจากทั้งหมด {len(view_items)} รายการ" if len(view_items) > 6 else ""
+        chart_sub_extra = f" • แสดง {len(chart_slice)} อันดับเสี่ยงสูงสุด" if len(view_items) > 6 else ""
         render_html(f"""
         <div class="panel-box" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none;">
-            <div class="panel-title">เปรียบเทียบ "ยอดคาดสัปดาห์หน้า" กับ "เกณฑ์เตือน" (เรียงอันดับความเสี่ยงบนลงล่าง)</div>
+            <div class="panel-title">เปรียบเทียบ "ยอดคาดสัปดาห์หน้า" กับ "เกณฑ์เตือน"</div>
             <div class="panel-sub">สีแดง = เกินเกณฑ์เตือน • สีฟ้า = ปกติ{chart_sub_extra}</div>
         </div>
         """)
@@ -639,42 +516,31 @@ with tab1:
 
         fc_vals = [to_int(d["forecast"]) for d in chart_items]
         th_vals = [to_int(d["threshold"]) for d in chart_items]
-        fc_colors = ["#e11d48" if d["is_flagged"] else "#0284c7" for d in chart_items]
-        fc_texts = [
-            f" {to_int(d['forecast']):,} ราย (เกินเกณฑ์)" if d["is_flagged"] else f" {to_int(d['forecast']):,} ราย"
-            for d in chart_items
-        ]
+        fc_colors = ["#f43f5e" if d["is_flagged"] else "#38bdf8" for d in chart_items]
+        fc_texts = [f" {to_int(d['forecast']):,} ราย (เกินเกณฑ์)" if d["is_flagged"] else f" {to_int(d['forecast']):,} ราย" for d in chart_items]
         th_texts = [f" {to_int(d['threshold']):,} ราย" for d in chart_items]
 
         fig_ov = go.Figure()
         fig_ov.add_trace(go.Bar(
             y=y_names, x=th_vals, name="เกณฑ์เตือนปกติ", orientation="h",
             marker=dict(color="#cbd5e1"), text=th_texts, textposition="outside",
-            textfont=dict(size=11.5, color="#64748b"),
-            hovertemplate="%{y}<br>เกณฑ์เตือน: %{x:,} ราย<extra></extra>"
+            textfont=dict(size=11.5, color="#64748b"), hovertemplate="%{y}<br>เกณฑ์เตือน: %{x:,} ราย<extra></extra>"
         ))
         fig_ov.add_trace(go.Bar(
             y=y_names, x=fc_vals, name="ยอดคาดสัปดาห์หน้า", orientation="h",
             marker=dict(color=fc_colors), text=fc_texts, textposition="outside",
-            textfont=dict(size=12, color="#0f172a"),
-            hovertemplate="%{y}<br>ยอดคาดสัปดาห์หน้า: %{x:,} ราย<extra></extra>"
+            textfont=dict(size=12, color="#0f172a"), hovertemplate="%{y}<br>ยอดคาดสัปดาห์หน้า: %{x:,} ราย<extra></extra>"
         ))
 
         max_x = max(fc_vals + th_vals + [1])
-        chart_h = max(220, 75 + len(chart_items) * 58)
         fig_ov.update_layout(
-            barmode="group", bargap=0.28, bargroupgap=0.12,
-            plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+            barmode="group", bargap=0.28, bargroupgap=0.12, plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
             legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0, font=dict(size=12)),
             font=dict(family="IBM Plex Sans Thai, sans-serif", size=12, color="#334155"),
-            margin=dict(l=10, r=30, t=42, b=28), height=chart_h
+            margin=dict(l=10, r=30, t=42, b=28), height=max(220, 75 + len(chart_items) * 58)
         )
-        fig_ov.update_xaxes(
-            showgrid=True, gridcolor="#f1f5f9", zeroline=False,
-            range=[0, max_x * 1.48], nticks=5, tickformat=",d",
-            title_text="จำนวนผู้ป่วย (ราย)", title_font=dict(size=12, color="#64748b")
-        )
-        fig_ov.update_yaxes(showgrid=False, automargin=True, tickfont=dict(size=12, color="#0f172a"))
+        fig_ov.update_xaxes(showgrid=True, gridcolor="#f1f5f9", zeroline=False, range=[0, max_x * 1.48], nticks=5, tickformat=",d", title_text="จำนวนผู้ป่วย (ราย)")
+        fig_ov.update_yaxes(showgrid=False, automargin=True)
         st.plotly_chart(fig_ov, use_container_width=True)
 
     with col_action:
@@ -688,12 +554,8 @@ with tab1:
             """)
         else:
             for i, item in enumerate(top_alerts):
-                fc_i = to_int(item["forecast"])
-                th_i = to_int(item["threshold"])
-                lt_i = to_int(item["latest_cases"])
-                lo_i = to_int(item["pi_low"])
-                hi_i = to_int(item["pi_high"])
-                diff = fc_i - th_i
+                fc_i, th_i, lt_i = to_int(item["forecast"]), to_int(item["threshold"]), to_int(item["latest_cases"])
+                lo_i, hi_i, diff = to_int(item["pi_low"]), to_int(item["pi_high"]), fc_i - th_i
                 guide = DISEASE_ACTION_GUIDE.get(item["disease_code"], "ตรวจสอบข้อมูลรายอำเภอและยืนยันแนวโน้มกับทีมพื้นที่")
                 prov_badge = f'<span class="action-prov">จ.{item["province_name"]}</span>' if is_all_prov else ""
 
@@ -706,9 +568,7 @@ with tab1:
                     <div class="action-stats">
                         คาดสัปดาห์หน้า <b style="color:#be123c;">{fc_i:,} ราย</b> (เกณฑ์ {th_i:,} ราย) • ล่าสุด {lt_i:,} ราย • ช่วง 95%: {lo_i:,}–{hi_i:,} ราย
                     </div>
-                    <div class="action-guide">
-                        <b>แนวทางรับมือเบื้องต้น:</b> {guide}
-                    </div>
+                    <div class="action-guide"><b>แนวทางรับมือเบื้องต้น:</b> {guide}</div>
                 </div>
                 """)
             if len(flagged_items) > 3:
@@ -717,176 +577,91 @@ with tab1:
     render_html('<div class="sec-label">ตารางสรุปตัวเลขทั้งหมด (เรียงลำดับความเสี่ยงจากมากไปน้อย)</div>')
     rows_html = []
     for rank_idx, d in enumerate(view_items, start=1):
-        fc_i = to_int(d["forecast"])
-        th_i = to_int(d["threshold"])
-        lt_i = to_int(d["latest_cases"])
-        lo_i = to_int(d["pi_low"])
-        hi_i = to_int(d["pi_high"])
-        diff = fc_i - th_i
-
-        if d["is_flagged"]:
-            badge = '<span class="badge-red">ควรเฝ้าระวัง</span>'
-            diff_txt = f'<span style="color:#be123c; font-weight:600;">+{diff:,} ราย</span>'
-        else:
-            badge = '<span class="badge-ok">ปกติ</span>'
-            diff_txt = f'<span style="color:#15803d;">{diff:,} ราย</span>'
-
+        fc_i, th_i, lt_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"])
+        lo_i, hi_i, diff = to_int(d["pi_low"]), to_int(d["pi_high"]), fc_i - th_i
+        badge = '<span class="badge-red">ควรเฝ้าระวัง</span>' if d["is_flagged"] else '<span class="badge-ok">ปกติ</span>'
+        diff_txt = f'<span style="color:#be123c; font-weight:600;">+{diff:,} ราย</span>' if d["is_flagged"] else f'<span style="color:#15803d;">{diff:,} ราย</span>'
         prov_td = f"<td><b>จ.{d['province_name']}</b></td>" if is_all_prov else ""
         rows_html.append(f"""
         <tr>
-            <td class="ctr">{rank_idx}</td>
-            {prov_td}
+            <td class="ctr">{rank_idx}</td>{prov_td}
             <td><b>{d['disease_code']} - {d['disease_name']}</b></td>
             <td class="num">{lt_i:,}</td>
             <td class="num"><b>{fc_i:,}</b><span class="muted">ช่วง {lo_i:,}–{hi_i:,}</span></td>
-            <td class="num">{th_i:,}</td>
-            <td class="num">{diff_txt}</td>
-            <td class="ctr">{badge}</td>
+            <td class="num">{th_i:,}</td><td class="num">{diff_txt}</td><td class="ctr">{badge}</td>
         </tr>
         """)
-
     prov_th = "<th>จังหวัด</th>" if is_all_prov else ""
     render_html(f"""
-    <div class="tbl-wrap">
-    <table class="m-table">
-        <thead>
-            <tr>
-                <th class="ctr">อันดับ</th>{prov_th}<th>โรค</th><th class="num">ยอดล่าสุด</th>
-                <th class="num">ยอดคาดสัปดาห์หน้า</th><th class="num">เกณฑ์เตือน</th>
-                <th class="num">ต่างจากเกณฑ์</th><th class="ctr">สถานะ</th>
-            </tr>
-        </thead>
+    <div class="tbl-wrap"><table class="m-table">
+        <thead><tr><th class="ctr">อันดับ</th>{prov_th}<th>โรค</th><th class="num">ยอดล่าสุด</th><th class="num">ยอดคาดสัปดาห์หน้า</th><th class="num">เกณฑ์เตือน</th><th class="num">ต่างจากเกณฑ์</th><th class="ctr">สถานะ</th></tr></thead>
         <tbody>{"".join(rows_html)}</tbody>
-    </table>
-    </div>
+    </table></div>
     """)
 
 # =========================================================
-# แท็บ 2: กราฟแนวโน้มรายโรค (ตั้งค่าเริ่มต้นที่อันดับ 1 เสี่ยงสูงสุด)
+# แท็บ 2: กราฟแนวโน้มรายโรค (คลีน ไม่เบียดกัน)
 # =========================================================
 with tab2:
     if len(view_items) == 1:
         d = view_items[0]
     else:
-        d_map = {}
-        for item in view_items:
-            dot = "🔴" if item["is_flagged"] else "🟢"
-            lbl = (
-                f"{dot} จ.{item['province_name']} — {item['disease_code']} {item['disease_name']}"
-                if is_all_prov else
-                f"{dot} {item['disease_code']} - {item['disease_name']}"
-            )
-            d_map[lbl] = item
-        sel_d = st.selectbox("เลือกจังหวัดและโรคที่ต้องการดูแนวโน้มย้อนหลัง 1 ปี (เรียงเสี่ยงสูงสุดไว้บนสุด)", list(d_map.keys()))
-        d = d_map[sel_d]
+        d_map = {
+            (f"{'🔴' if it['is_flagged'] else '🟢'} จ.{it['province_name']} — {it['disease_code']} {it['disease_name']}" if is_all_prov else f"{'🔴' if it['is_flagged'] else '🟢'} {it['disease_code']} - {it['disease_name']}"): it
+            for it in view_items
+        }
+        d = d_map[st.selectbox("เลือกจังหวัดและโรคที่ต้องการดูแนวโน้มย้อนหลัง 1 ปี", list(d_map.keys()))]
 
-    fc_i = to_int(d["forecast"])
-    th_i = to_int(d["threshold"])
-    lt_i = to_int(d["latest_cases"])
-    lo_i = to_int(d["pi_low"])
-    hi_i = to_int(d["pi_high"])
-
+    fc_i, th_i, lt_i, lo_i, hi_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"]), to_int(d["pi_low"]), to_int(d["pi_high"])
     st_color = "#be123c" if d["is_flagged"] else "#15803d"
     st_label = "เกินเกณฑ์เตือน (ควรเฝ้าระวัง)" if d["is_flagged"] else "ต่ำกว่าเกณฑ์ (ปกติ)"
 
     render_html(f"""
     <div class="kpi-row">
-        <div class="kpi-card">
-            <div class="kpi-lbl">ยอดจริงสัปดาห์ล่าสุด</div>
-            <div class="kpi-val">{lt_i:,} ราย</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-lbl">พยากรณ์สัปดาห์เป้าหมาย ({d['target_week']})</div>
-            <div class="kpi-val" style="color:{st_color};">{fc_i:,} ราย</div>
-            <div class="kpi-note">ช่วงที่เป็นไปได้ 95%: {lo_i:,} – {hi_i:,} ราย</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-lbl">เกณฑ์เตือนรายโรค</div>
-            <div class="kpi-val">{th_i:,} ราย</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-lbl">ผลการเทียบเกณฑ์</div>
-            <div class="kpi-val" style="font-size:15.5px; color:{st_color}; margin-top:6px;">{st_label}</div>
-        </div>
+        <div class="kpi-card"><div class="kpi-lbl">ยอดจริงสัปดาห์ล่าสุด</div><div class="kpi-val">{lt_i:,} ราย</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">พยากรณ์สัปดาห์เป้าหมาย ({d['target_week']})</div><div class="kpi-val" style="color:{st_color};">{fc_i:,} ราย</div><div class="kpi-note">ช่วง 95%: {lo_i:,} – {hi_i:,} ราย</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">เกณฑ์เตือนรายโรค</div><div class="kpi-val">{th_i:,} ราย</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">ผลการเทียบเกณฑ์</div><div class="kpi-val" style="font-size:15.5px; color:{st_color}; margin-top:6px;">{st_label}</div></div>
     </div>
     """)
 
     render_html(f"""
     <div class="panel-box" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none;">
         <div class="panel-title">แนวโน้มผู้ป่วยรายสัปดาห์ — {d['disease_name']} (จังหวัด{d['province_name']})</div>
-        <div class="panel-sub">แสดงยอดย้อนหลัง 1 ปี เทียบกับเส้นเกณฑ์เตือนและจุดพยากรณ์สัปดาห์หน้า (ชี้เมาส์เพื่อดูยอดแต่ละสัปดาห์)</div>
+        <div class="panel-sub">แสดงยอดย้อนหลัง 1 ปี เทียบกับเส้นเกณฑ์เตือนและจุดพยากรณ์สัปดาห์หน้า (ลากคลุมเพื่อซูม ดับเบิลคลิกเพื่อรีเซ็ต)</div>
     </div>
     """)
 
     hist = pd.DataFrame(d["history"])
     hist["week_dt"] = pd.to_datetime(hist["week"])
     hist["cases_num"] = pd.to_numeric(hist["cases"], errors="coerce")
-    target_dt = pd.to_datetime(d["target_week"])
-    first_dt = hist["week_dt"].iloc[0]
+    target_dt, first_dt = pd.to_datetime(d["target_week"]), hist["week_dt"].iloc[0]
 
     fig = go.Figure()
-
     prelim = hist[hist["status"].str.contains("เบื้องต้น", na=False)]
     if not prelim.empty:
-        fig.add_vrect(
-            x0=prelim["week_dt"].iloc[0] - pd.Timedelta(days=3),
-            x1=prelim["week_dt"].iloc[-1] + pd.Timedelta(days=3),
-            fillcolor="rgba(245, 158, 11, 0.12)", line_width=0
-        )
+        fig.add_vrect(x0=prelim["week_dt"].iloc[0] - pd.Timedelta(days=3), x1=prelim["week_dt"].iloc[-1] + pd.Timedelta(days=3), fillcolor="rgba(245, 158, 11, 0.12)", line_width=0)
 
-    fig.add_trace(go.Scatter(
-        x=[first_dt, target_dt], y=[th_i, th_i], mode="lines",
-        name=f"เกณฑ์เตือน ({th_i:,} ราย)", line=dict(color="#f59e0b", width=2.2, dash="dot"),
-        hovertemplate=f"เกณฑ์เตือน: {th_i:,} ราย<extra></extra>"
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=hist["week_dt"], y=hist["cases_num"], mode="lines+markers", name="ยอดผู้ป่วยจริง",
-        line=dict(color="#0284c7", width=2.4),
-        marker=dict(size=6.5, color="#0284c7", line=dict(color="#ffffff", width=1)),
-        hovertemplate="สัปดาห์ %{x|%d %b %Y}<br>ยอดจริง: %{y:,.0f} ราย<extra></extra>"
-    ))
+    fig.add_trace(go.Scatter(x=[first_dt, target_dt], y=[th_i, th_i], mode="lines", name=f"เกณฑ์เตือน ({th_i:,} ราย)", line=dict(color="#f59e0b", width=2.2, dash="dot"), hovertemplate=f"เกณฑ์เตือน: {th_i:,} ราย<extra></extra>"))
+    fig.add_trace(go.Scatter(x=hist["week_dt"], y=hist["cases_num"], mode="lines+markers", name="ยอดผู้ป่วยจริง", line=dict(color="#0284c7", width=2.4), marker=dict(size=6.5, color="#0284c7", line=dict(color="#ffffff", width=1)), hovertemplate="สัปดาห์ %{x|%d %b %Y}<br>ยอดจริง: %{y:,.0f} ราย<extra></extra>"))
 
     valid = hist.dropna(subset=["cases_num"])
     if not valid.empty:
-        fig.add_trace(go.Scatter(
-            x=[valid["week_dt"].iloc[-1], target_dt], y=[valid["cases_num"].iloc[-1], fc_i],
-            mode="lines", line=dict(color="#e11d48", width=2, dash="dash"),
-            showlegend=False, hoverinfo="skip"
-        ))
+        fig.add_trace(go.Scatter(x=[valid["week_dt"].iloc[-1], target_dt], y=[valid["cases_num"].iloc[-1], fc_i], mode="lines", line=dict(color="#f43f5e", width=2, dash="dash"), showlegend=False, hoverinfo="skip"))
 
-    fig.add_trace(go.Scatter(
-        x=[target_dt], y=[fc_i], mode="markers", name=f"พยากรณ์สัปดาห์หน้า ({fc_i:,} ราย)",
-        marker=dict(color="#e11d48", size=14, symbol="star", line=dict(color="#ffffff", width=1)),
-        hovertemplate=f"สัปดาห์เป้าหมาย {d['target_week']}<br>พยากรณ์: {fc_i:,} ราย<br>ช่วง 95%: {lo_i:,}–{hi_i:,} ราย<extra></extra>"
-    ))
-
+    fig.add_trace(go.Scatter(x=[target_dt], y=[fc_i], mode="markers", name=f"พยากรณ์สัปดาห์หน้า ({fc_i:,} ราย)", marker=dict(color="#f43f5e", size=14, symbol="star", line=dict(color="#ffffff", width=1)), hovertemplate=f"สัปดาห์เป้าหมาย {d['target_week']}<br>พยากรณ์: {fc_i:,} ราย<br>ช่วง 95%: {lo_i:,}–{hi_i:,} ราย<extra></extra>"))
     if not prelim.empty:
-        fig.add_trace(go.Scatter(
-            x=[None], y=[None], mode="markers", name="แถบเหลือง = ข้อมูลเบื้องต้น (รอยอดนิ่ง)",
-            marker=dict(symbol="square", size=10, color="rgba(245, 158, 11, 0.35)", line=dict(color="#f59e0b", width=1)),
-            hoverinfo="skip"
-        ))
+        fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name="แถบเหลือง = ข้อมูลเบื้องต้น", marker=dict(symbol="square", size=10, color="rgba(245, 158, 11, 0.35)", line=dict(color="#f59e0b", width=1)), hoverinfo="skip"))
 
     y_max = max(float(valid["cases_num"].max() if not valid.empty else 0), float(th_i), float(fc_i), 1.0)
     fig.update_layout(
         plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0, font=dict(size=12.5, color="#334155")),
+        legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0, font=dict(size=12.5)),
         font=dict(family="IBM Plex Sans Thai, sans-serif", size=12.5, color="#64748b"),
         margin=dict(l=45, r=25, t=65, b=45), height=410
     )
-    fig.update_xaxes(
-        showgrid=False, tickformat="%b %Y", nticks=7, tickangle=0, zeroline=False, automargin=True,
-        range=[first_dt - pd.Timedelta(days=7), target_dt + pd.Timedelta(days=18)],
-        tickfont=dict(size=12, color="#64748b")
-    )
-    fig.update_yaxes(
-        showgrid=True, gridcolor="#eef2f6", zeroline=False, nticks=6, tickformat=",d", automargin=True,
-        range=[-max(0.3, y_max * 0.08), y_max * 1.22],
-        title_text="จำนวนผู้ป่วย (ราย)", title_font=dict(size=12, color="#64748b"),
-        tickfont=dict(size=12, color="#64748b")
-    )
-
+    fig.update_xaxes(showgrid=False, tickformat="%b %Y", nticks=7, zeroline=False, automargin=True, range=[first_dt - pd.Timedelta(days=7), target_dt + pd.Timedelta(days=18)])
+    fig.update_yaxes(showgrid=True, gridcolor="#eef2f6", zeroline=False, nticks=6, tickformat=",d", automargin=True, range=[-max(0.3, y_max * 0.08), y_max * 1.22], title_text="จำนวนผู้ป่วย (ราย)")
     st.plotly_chart(fig, use_container_width=True)
 
     guide_sel = DISEASE_ACTION_GUIDE.get(d["disease_code"], "")
@@ -894,16 +669,11 @@ with tab2:
         render_html(f'<div class="hint-text"><b>ข้อแนะนำสำหรับทีมระบาดวิทยา (จ.{d["province_name"]} • {d["disease_name"]}):</b> {guide_sel}</div>')
 
 # =========================================================
-# แท็บ 3: บันทึกและติดตามผล + ประเมินรายเดือน 4 ตัวชี้วัด
+# แท็บ 3: บันทึกและติดตามผล + 4 ตัวชี้วัดรายเดือน
 # =========================================================
 with tab3:
     reg_df = load_registry(selected_prov_code, selected_disease_code)
-
-    render_html("""
-    <div class="info-strip">
-        <b>หน้านี้ทำงานอย่างไร?</b> เจ้าหน้าที่กรอกข้อมูลด้านล่างเมื่อลงตรวจสอบจริง และเมื่อครบ 1–2 สัปดาห์ให้มากรอก <b>"ยอดจริงนิ่งแล้ว"</b> ระบบจะเทียบกับเกณฑ์เดิมที่ล็อกไว้แล้วคำนวณ <b>ตัวชี้วัด 4 ตัวด้านล่าง</b> ให้เองอัตโนมัติ (ใช้ประเมินว่าโมเดลแม่นแค่ไหนและเตือนเกินบ่อยไหม)
-    </div>
-    """)
+    render_html('<div class="info-strip"><b>หน้านี้ทำงานอย่างไร?</b> กรอกข้อมูลเมื่อลงตรวจสอบจริง และเมื่อครบ 1–2 สัปดาห์ให้มากรอก <b>"ยอดจริงนิ่งแล้ว"</b> ระบบจะเทียบกับเกณฑ์เดิมที่ล็อกไว้แล้วคำนวณ <b>ตัวชี้วัด 4 ตัวด้านล่าง</b> ให้อัตโนมัติ</div>')
 
     if reg_df.empty:
         st.info("ยังไม่มีรายการในทะเบียนตามจังหวัดและโรคที่เลือก")
@@ -912,33 +682,21 @@ with tab3:
         c_title, c_month = st.columns([3, 1])
         with c_title:
             render_html(f'<div class="sec-label">ผลประเมินระบบติดตามผลรายเดือน — {area_title} • {disease_scope_text}</div>')
-        sel_m = c_month.selectbox(
-            "เลือกเดือน", ["ทั้งหมด"] + sorted(reg_df["month"].unique().tolist(), reverse=True),
-            label_visibility="collapsed"
-        )
+        sel_m = c_month.selectbox("เลือกเดือน", ["ทั้งหมด"] + sorted(reg_df["month"].unique().tolist(), reverse=True), label_visibility="collapsed")
 
         ev = reg_df if sel_m == "ทั้งหมด" else reg_df[reg_df["month"] == sel_m]
         ev["settled_num"] = pd.to_numeric(ev["settled_actual_cases"], errors="coerce")
         closed = ev[ev["settled_num"].notna()].copy()
 
         if closed.empty:
-            m1_val, m2_val, m3_val, m4_val = "รอปิดยอดจริง", "รอปิดยอดจริง", "0 ครั้ง", "รอระบุเวลา"
-            m3_note = "จะคำนวณเมื่อกรอกช่อง 'ยอดจริงนิ่งแล้ว'"
+            m1_val, m2_val, m3_val, m4_val, m3_note = "รอปิดยอดจริง", "รอปิดยอดจริง", "0 ครั้ง", "รอระบุเวลา", "จะคำนวณเมื่อกรอกช่อง 'ยอดจริงนิ่งแล้ว'"
         else:
             flagged = closed["is_flagged"].astype(str).str.lower() == "true"
             actual_met = closed["settled_num"] >= pd.to_numeric(closed["frozen_threshold"], errors="coerce")
-            tp = int((flagged & actual_met).sum())
-            fp = int((flagged & ~actual_met).sum())
-            fn = int((~flagged & actual_met).sum())
-            avg_hr = (
-                (pd.to_datetime(closed["check_start_time"], errors="coerce") - pd.to_datetime(closed["alert_sent_time"], errors="coerce"))
-                .dt.total_seconds() / 3600
-            ).dropna().mean()
-
-            m1_val = ratio_text(tp, tp + fp)
-            m2_val = ratio_text(tp, tp + fn)
-            m3_val = f"รวม {tp + fp} (เกิน {fp})"
-            m3_note = f"แจ้งเตือนทั้งหมด {tp + fp} ครั้ง / เตือนเกิน {fp} ครั้ง"
+            tp, fp, fn = int((flagged & actual_met).sum()), int((flagged & ~actual_met).sum()), int((~flagged & actual_met).sum())
+            avg_hr = ((pd.to_datetime(closed["check_start_time"], errors="coerce") - pd.to_datetime(closed["alert_sent_time"], errors="coerce")).dt.total_seconds() / 3600).dropna().mean()
+            m1_val, m2_val = ratio_text(tp, tp + fp), ratio_text(tp, tp + fn)
+            m3_val, m3_note = f"รวม {tp + fp} (เกิน {fp})", f"แจ้งเตือนทั้งหมด {tp + fp} ครั้ง / เตือนเกิน {fp} ครั้ง"
             m4_val = f"{avg_hr:.1f} ชม." if pd.notna(avg_hr) else "ยังไม่ระบุเวลา"
 
         render_html(f"""
@@ -950,43 +708,21 @@ with tab3:
         </div>
         """)
 
-        with st.expander("บันทึกผลการตรวจสอบ / ปิดยอดจริง (กรอกแล้วกดบันทึก ตัวชี้วัดด้านบนจะอัปเดตทันที)", expanded=True):
-            reg_df["label"] = (
-                reg_df["run_id"] + "  |  จ." + reg_df["province_name"].astype(str) +
-                "  |  " + reg_df["disease_code"] + " - " + reg_df["disease_name"] +
-                "  |  สัปดาห์ " + reg_df["target_week"]
-            )
-            sel_rec = st.selectbox("เลือกรอบรายงาน จังหวัด และโรคที่ต้องการบันทึก", reg_df["label"].tolist())
-            rec = reg_df[reg_df["label"] == sel_rec].iloc[0]
+        with st.expander("บันทึกผลการตรวจสอบ / ปิดยอดจริง", expanded=True):
+            reg_df["label"] = reg_df["run_id"] + "  |  จ." + reg_df["province_name"].astype(str) + "  |  " + reg_df["disease_code"] + " - " + reg_df["disease_name"] + "  |  สัปดาห์ " + reg_df["target_week"]
+            rec = reg_df[reg_df["label"] == st.selectbox("เลือกรอบรายงาน จังหวัด และโรค", reg_df["label"].tolist())].iloc[0]
 
             with st.form("track_form", border=False):
                 c1, c2 = st.columns(2)
-                in_time = c1.text_input(
-                    "1) เวลาเริ่มตรวจ (ใช้คำนวณ 'ความเร็วเริ่มตรวจ')",
-                    value=clean_str(rec["check_start_time"]),
-                    placeholder="เช่น 2025-12-31 11:30"
-                )
+                in_time = c1.text_input("1) เวลาเริ่มตรวจ", value=clean_str(rec["check_start_time"]), placeholder="เช่น 2026-11-23 11:30")
                 f_opts = ["", "พบกลุ่มก้อน", "พบการส่งย้อนหลัง", "ยังสรุปไม่ได้", "ปกติ"]
                 cur_f = clean_str(rec["field_result"])
-                in_field = c2.selectbox(
-                    "2) ผลภาคสนาม (แยกจากสถานะยอดเข้าเกณฑ์ เพื่อทบทวนกับทีม)",
-                    f_opts,
-                    index=f_opts.index(cur_f) if cur_f in f_opts else 0
-                )
+                in_field = c2.selectbox("2) ผลภาคสนาม", f_opts, index=f_opts.index(cur_f) if cur_f in f_opts else 0)
 
                 c3, c4 = st.columns(2)
-                in_action = c3.text_input(
-                    "3) การดำเนินการ (บันทึกสิ่งที่ทีมทำไปแล้ว)",
-                    value=clean_str(rec["action_taken"]),
-                    placeholder="เช่น แจ้งทีม SRRT พื้นที่ตรวจสอบซ้ำ"
-                )
+                in_action = c3.text_input("3) การดำเนินการ", value=clean_str(rec["action_taken"]), placeholder="เช่น แจ้งทีม SRRT พื้นที่ตรวจสอบซ้ำ")
                 raw_act = clean_str(rec["settled_actual_cases"])
-                cur_act = str(to_int(raw_act)) if raw_act != "" else ""
-                in_actual = c4.text_input(
-                    "4) ยอดจริงนิ่งแล้ว (กรอกเมื่อข้อมูลนิ่ง เพื่อคำนวณความแม่น 1–3)",
-                    value=cur_act,
-                    placeholder="เว้นว่างไว้หากยอดยังไม่นิ่ง (กรอกเป็นจำนวนเต็ม)"
-                )
+                in_actual = c4.text_input("4) ยอดจริงนิ่งแล้ว (จำนวนเต็ม)", value=str(to_int(raw_act)) if raw_act != "" else "", placeholder="เว้นว่างไว้หากยอดยังไม่นิ่ง")
 
                 if st.form_submit_button("บันทึกผลและอัปเดตตัวชี้วัด", type="primary"):
                     actual_val = None
@@ -999,11 +735,8 @@ with tab3:
                         except ValueError:
                             st.error("กรุณากรอกยอดจริงเป็นตัวเลขจำนวนเต็ม")
                             st.stop()
-                    update_registry(
-                        rec["run_id"], rec["province_code"], rec["disease_code"], rec["target_week"],
-                        in_time.strip(), in_field, in_action.strip(), actual_val
-                    )
-                    st.success("บันทึกเรียบร้อยแล้ว และอัปเดตผลประเมินด้านบนให้แล้ว")
+                    update_registry(rec["run_id"], rec["province_code"], rec["disease_code"], rec["target_week"], in_time.strip(), in_field, in_action.strip(), actual_val)
+                    st.success("บันทึกเรียบร้อยแล้ว")
                     st.rerun()
 
         render_html('<div class="sec-label">ทะเบียนติดตามผล (คงค่าพยากรณ์และเกณฑ์เดิมไว้เทียบผลจริง)</div>')
@@ -1013,86 +746,6 @@ with tab3:
             act_s = clean_str(r["settled_actual_cases"])
             act_txt = f"<b>{fmt_int(act_s)} ราย</b>" if act_s != "" else '<span style="color:#94a3b8;">รอยอดนิ่ง</span>'
             prov_td = f"<td><b>จ.{r['province_name']}</b></td>" if is_all_prov else ""
-            reg_rows.append(f"""
-            <tr>
-                <td><b>{r['run_id']}</b><span class="muted">เป้าหมาย {r['target_week']}</span></td>
-                {prov_td}
-                <td><b>{r['disease_name']}</b></td>
-                <td class="num"><b>{fmt_int(r['frozen_forecast'])}</b><span class="muted">เกณฑ์ {fmt_int(r['frozen_threshold'])}</span></td>
-                <td class="ctr">{f_badge}</td>
-                <td>{clean_str(r['check_start_time']) or '-'}</td>
-                <td>{clean_str(r['field_result']) or '-'}</td>
-                <td>{clean_str(r['action_taken']) or '-'}</td>
-                <td class="num">{act_txt}</td>
-            </tr>
-            """)
+            reg_rows.append(f"<tr><td><b>{r['run_id']}</b><span class='muted'>เป้าหมาย {r['target_week']}</span></td>{prov_td}<td><b>{r['disease_name']}</b></td><td class='num'><b>{fmt_int(r['frozen_forecast'])}</b><span class='muted'>เกณฑ์ {fmt_int(r['frozen_threshold'])}</span></td><td class='ctr'>{f_badge}</td><td>{clean_str(r['check_start_time']) or '-'}</td><td>{clean_str(r['field_result']) or '-'}</td><td>{clean_str(r['action_taken']) or '-'}</td><td class='num'>{act_txt}</td></tr>")
         prov_th = "<th>จังหวัด</th>" if is_all_prov else ""
-        render_html(f"""
-        <div class="tbl-wrap">
-        <table class="m-table">
-            <thead>
-                <tr>
-                    <th>รอบรายงาน</th>{prov_th}<th>โรค</th><th class="num">คาด / เกณฑ์</th><th class="ctr">สถานะ</th>
-                    <th>เวลาเริ่มตรวจ</th><th>ผลภาคสนาม</th><th>การดำเนินการ</th><th class="num">ยอดจริงนิ่งแล้ว</th>
-                </tr>
-            </thead>
-            <tbody>{"".join(reg_rows)}</tbody>
-        </table>
-        </div>
-        """)
-
-# =========================================================
-# แท็บ 4: เปรียบเทียบโมเดลย้อนหลัง
-# =========================================================
-with tab4:
-    render_html('<div class="hint-text" style="margin-bottom:10px;">ทดสอบย้อนหลังในปีที่ 3 แบบเลื่อนทีละสัปดาห์ (ใช้ข้อมูลถึงวันตัดรอบเท่านั้น) • <b>MAE</b> ยิ่งน้อยยิ่งทายแม่น • <b>เตือนถูก</b> ยิ่งมากยิ่งดี • <b>เตือนเกิน/พลาด</b> ยิ่งน้อยยิ่งดี</div>')
-    if not os.path.exists(BACKTEST_FILE):
-        st.info("ยังไม่มีไฟล์ผลเปรียบเทียบโมเดล (backtest_report.csv)")
-    else:
-        bt = pd.read_csv(BACKTEST_FILE, dtype={"รหัสจังหวัด": str, "รหัสโรค": str})
-        bt["รหัสจังหวัด"] = bt["รหัสจังหวัด"].str.strip().str.replace(r"\.0$", "", regex=True)
-        bt["รหัสโรค"] = bt["รหัสโรค"].str.strip().str.replace(r"\.0$", "", regex=True).str.zfill(2)
-        if selected_prov_code is not None:
-            bt = bt[bt["รหัสจังหวัด"] == str(selected_prov_code)].copy()
-        if selected_disease_code is not None:
-            bt = bt[bt["รหัสโรค"] == str(selected_disease_code).zfill(2)].copy()
-
-        if bt.empty:
-            st.info("ไม่มีผลทดสอบย้อนหลังสำหรับจังหวัดและโรคที่เลือก")
-        else:
-            best_mae = bt.groupby(["รหัสจังหวัด", "รหัสโรค"])["MAE"].transform("min")
-            bt_rows = []
-            for idx, r in bt.iterrows():
-                tag = ' <span class="badge-blue">แม่นสุด</span>' if r["MAE"] == best_mae.loc[idx] else ""
-                prov_td = f"<td><b>จ.{r['จังหวัด']}</b></td>" if is_all_prov else ""
-                bt_rows.append(f"""
-                <tr>
-                    {prov_td}
-                    <td><b>{r['ชื่อโรค']}</b><span class="muted">เกณฑ์ {fmt_int(r['เกณฑ์ชี้เป้า'])} ราย ({fmt_int(r['สัปดาห์ทดสอบ'])} สัปดาห์)</span></td>
-                    <td>{r['โมเดล']}{tag}</td>
-                    <td class="num"><b>{r['MAE']}</b></td>
-                    <td class="num" style="color:#15803d; font-weight:600;">{fmt_int(r['จับได้ (TP)'])}</td>
-                    <td class="num" style="color:#b45309;">{fmt_int(r['แจ้งเกิน (FP)'])}</td>
-                    <td class="num" style="color:#be123c;">{fmt_int(r['พลาด (FN)'])}</td>
-                    <td class="num">{r['ความแม่นของสัญญาณ']}</td>
-                    <td class="num">{r['ความครอบคลุม']}</td>
-                </tr>
-                """)
-            prov_th = "<th>จังหวัด</th>" if is_all_prov else ""
-            render_html(f"""
-            <div class="tbl-wrap">
-            <table class="m-table">
-                <thead>
-                    <tr>
-                        {prov_th}<th>โรค</th><th>วิธีคำนวณ</th><th class="num">ทายพลาดเฉลี่ย (MAE)</th>
-                        <th class="num">เตือนถูก</th><th class="num">เตือนเกิน</th><th class="num">พลาด</th>
-                        <th class="num">ความแม่นสัญญาณ</th><th class="num">ความครอบคลุม</th>
-                    </tr>
-                </thead>
-                <tbody>{"".join(bt_rows)}</tbody>
-            </table>
-            </div>
-            <div class="hint-text">หมายเหตุ: หากไฟล์ที่ใช้ทดสอบเป็นข้อมูลปรับย้อนหลัง ยอดผู้ป่วยจริงอาจสูงกว่ายอดที่เห็น ณ วันพยากรณ์จริงเนื่องจากความล่าช้าในการส่งรายงาน</div>
-            """)
-
-           
+        render_html(f'<div class="tbl-wrap"><table class="m-table"><thead><tr><th>รอบรายงาน</th>{prov_th}<th>โรค</th><th class="num">คาด / เกณฑ์</th><th class="ctr">สถานะ</th><th>เวลาเริ่มตรวจ</th><th>ผลภาคสนาม</th><th>การดำเนินการ</th><th class="num">ยอดจริงนิ่งแล้ว</th></tr></thead><tbody>{"".join(reg_rows)}</tbody></table></div>')
