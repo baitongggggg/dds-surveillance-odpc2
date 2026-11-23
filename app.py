@@ -154,7 +154,7 @@ header[data-testid="stHeader"] { background: transparent !important; height: 2.2
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-/* เปลี่ยนสีช่องติ๊ก Checkbox จากสีแดงเข้ม เป็นสีชมพูพาสเทล */
+/* เปลี่ยนสีช่องติ๊ก Checkbox เป็นสีน้ำเงินโทนอ่อน */
 [data-testid="stSidebar"] .stCheckbox {
     padding: 2px 6px;
     border-radius: 6px;
@@ -162,22 +162,24 @@ header[data-testid="stHeader"] { background: transparent !important; height: 2.2
     transition: background-color 0.15s ease;
 }
 [data-testid="stSidebar"] .stCheckbox:hover {
-    background-color: #fdf2f8;
+    background-color: #eff6ff;
 }
+[data-testid="stSidebar"] label[data-baseweb="checkbox"] > span:first-of-type,
 [data-testid="stSidebar"] label[data-baseweb="checkbox"] > div:first-of-type {
     border-radius: 5px !important;
-    border: 1.5px solid #cbd5e1 !important;
+    border: 1.5px solid #93c5fd !important;
     transition: all 0.15s ease;
 }
+[data-testid="stSidebar"] label[data-baseweb="checkbox"] input:checked + span,
 [data-testid="stSidebar"] label[data-baseweb="checkbox"] input:checked + div,
+[data-testid="stSidebar"] label[data-baseweb="checkbox"]:has(input:checked) > span:first-of-type,
 [data-testid="stSidebar"] label[data-baseweb="checkbox"]:has(input:checked) > div:first-of-type {
-    background-color: #f9a8d4 !important;
-    border-color: #f472b6 !important;
+    background-color: #60a5fa !important;
+    border-color: #3b82f6 !important;
 }
-[data-testid="stSidebar"] label[data-baseweb="checkbox"] input:checked + div svg,
-[data-testid="stSidebar"] label[data-baseweb="checkbox"]:has(input:checked) > div:first-of-type svg {
-    fill: #831843 !important;
-    color: #831843 !important;
+[data-testid="stSidebar"] label[data-baseweb="checkbox"] svg {
+    fill: #ffffff !important;
+    color: #ffffff !important;
 }
 
 /* กล่องขั้นตอนการใช้งานเว็บนี้ */
