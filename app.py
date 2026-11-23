@@ -593,7 +593,7 @@ with st.sidebar:
     sync_to_registry(payload)
 
     # 2. เลือกจังหวัดแบบติ๊ก (มีปุ่มเลือกทุกจังหวัด)
-    render_html('<div class="sb-sec-hdr">📍 2. เลือกจังหวัด (สคร.2)</div>')
+    render_html('<div class="sb-sec-hdr"> 2. เลือกจังหวัด (สคร.2)</div>')
     all_p_codes = [p["province_code"] for p in payload["provinces"]]
 
     if "chk_p_all" not in st.session_state:
@@ -620,7 +620,7 @@ with st.sidebar:
             selected_provinces_objs.append(p)
 
     # 3. เลือกโรคแบบติ๊ก (มีปุ่มเลือกทุกโรค)
-    render_html('<div class="sb-sec-hdr">🦠 3. เลือกกลุ่มโรคเฝ้าระวัง</div>')
+    render_html('<div class="sb-sec-hdr"> 3. เลือกกลุ่มโรคเฝ้าระวัง</div>')
     all_d_codes = ["02", "15", "31"]
 
     if "chk_d_all" not in st.session_state:
