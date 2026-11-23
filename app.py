@@ -772,17 +772,33 @@ with tab2:
     if len(view_items) == 1:
         d = view_items[0]
     else:
-        d_map = {}
+        # แยกเป็น 2 ช่องคู่กัน (จังหวัด 5 ตัวเลือก + โรค 3 ตัวเลือก)
+        c_p, c_d = st.columns(2)
+
+        # ช่องซ้าย: เลือกจังหวัด
+        avail_provs = {}
         for it in view_items:
-            pt = get_prov_theme(it["province_code"])
-            st_tag = " [เฝ้าระวัง]" if it["is_flagged"] else " [ปกติ]"
-            lbl = (
-                f"{pt['dot']} จ.{it['province_name']} — {it['disease_name']} ({it['disease_code']}){st_tag}"
-                if is_all_prov else
-                f"{pt['dot']} {it['disease_name']} ({it['disease_code']}){st_tag}"
-            )
-            d_map[lbl] = it
-        d = d_map[st.selectbox("เลือกจังหวัดและโรคที่ต้องการดูแนวโน้มย้อนหลัง 1 ปี (สีจุดแยกตามจังหวัด)", list(d_map.keys()))]
+            if it["province_code"] not in avail_provs:
+                pt = get_prov_theme(it["province_code"])
+                avail_provs[it["province_code"]] = f"{pt['dot']} จ.{it['province_name']}"
+
+        if len(avail_provs) > 1:
+            prov_lbl_to_code = {v: k for k, v in avail_provs.items()}
+            sel_p_lbl = c_p.selectbox("เลือกจังหวัด", list(prov_lbl_to_code.keys()), key="tab2_prov")
+            pick_p_code = prov_lbl_to_code[sel_p_lbl]
+        else:
+            pick_p_code = list(avail_provs.keys())[0]
+            c_p.selectbox("จังหวัด", list(avail_provs.values()), disabled=True, key="tab2_prov_fixed")
+
+        # ช่องขวา: เลือกโรคของจังหวัดที่เลือก
+        prov_items = [it for it in view_items if it["province_code"] == pick_p_code]
+        d_map = {}
+        for it in prov_items:
+            st_tag = "🔴 เฝ้าระวัง" if it["is_flagged"] else "🟢 ปกติ"
+            d_map[f"{it['disease_name']} ({it['disease_code']}) — {st_tag}"] = it
+
+        sel_d_lbl = c_d.selectbox("เลือกโรค", list(d_map.keys()), key="tab2_dis")
+        d = d_map[sel_d_lbl]
 
     pt_sel = get_prov_theme(d["province_code"])
     fc_i, th_i, lt_i, lo_i, hi_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"]), to_int(d["pi_low"]), to_int(d["pi_high"])
