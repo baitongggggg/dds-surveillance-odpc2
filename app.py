@@ -119,19 +119,77 @@ header[data-testid="stHeader"] { background: transparent !important; }
     max-width: 1180px !important;
 }
 
-/* ================= 2. Sidebar ================= */
+/* ================= 2. Sidebar (มีสีสัน น่าอ่าน) ================= */
 [data-testid="stSidebar"] {
-    background-color: #ffffff;
-    border-right: 1px solid #d1d5db;
+    background: linear-gradient(180deg, #e8f5ee 0%, #f8fafc 30%, #ffffff 100%);
+    border-right: 1px solid #cbd5e1;
 }
 .sidebar-brand {
-    background-color: #006837;
-    border-radius: 8px;
-    padding: 13px 15px;
+    background: linear-gradient(135deg, #005a2f 0%, #007a40 100%);
+    border-bottom: 3px solid #f59e0b;
+    border-radius: 10px;
+    padding: 14px 16px;
     margin-bottom: 16px;
+    box-shadow: 0 4px 10px rgba(0, 104, 55, 0.15);
 }
-.sidebar-brand-title { font-size: 14.5px; font-weight: 600; color: #ffffff; margin: 0; }
-.sidebar-brand-sub { font-size: 11.5px; color: #d1fae5; margin: 2px 0 0 0; }
+.sidebar-brand-title { font-size: 15px; font-weight: 700; color: #ffffff; margin: 0; }
+.sidebar-brand-sub { font-size: 11.5px; color: #d1fae5; margin: 3px 0 0 0; }
+
+.sb-sec-hdr {
+    background: #ffffff;
+    border-left: 4px solid #006837;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #00522b;
+    margin: 12px 0 8px 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+/* เปลี่ยนสีช่องติ๊ก Checkbox เป็นสีเขียวสาธารณสุข */
+[data-testid="stSidebar"] input[type="checkbox"] { accent-color: #006837; }
+[data-testid="stSidebar"] .stCheckbox { margin-bottom: -6px; }
+
+/* กล่องขั้นตอนการใช้งานเว็บนี้ (เด่น น่าอ่าน) */
+.guide-card {
+    background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
+    border: 1.5px solid #fcd34d;
+    border-radius: 10px;
+    padding: 13px 14px;
+    margin-top: 16px;
+    box-shadow: 0 3px 10px rgba(245, 158, 11, 0.1);
+}
+.guide-hdr {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed #fcd34d;
+}
+.guide-step {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #374151;
+    line-height: 1.5;
+}
+.guide-step:last-child { margin-bottom: 0; }
+.guide-num {
+    background: #006837;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 11px;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+}
 /* ================= 3. Official Portal Tabs ================= */
 .stTabs [data-baseweb="tab-list"] {
     background-color: #ffffff;
