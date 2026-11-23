@@ -98,130 +98,153 @@ CSV_REGISTRY = "tracking_registry.csv"
 # =========================================================
 render_html("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
-/* 1. ฟอนต์และพื้นหลังหลัก */
+/* ================= 1. Base & Typography (SaaS Pairing) ================= */
 html, body, [class*="css"] {
-    font-family: 'Noto Sans Thai', sans-serif !important;
+    font-family: 'Plus Jakarta Sans', 'Noto Sans Thai', sans-serif !important;
     font-size: 14px !important;
-    color: #1e293b;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
 }
 .stApp {
-    background: linear-gradient(180deg, #f0f7f4 0%, #f8fafc 45%, #f8fafc 100%);
+    background-color: #f5f8f7;
+    background-image: radial-gradient(rgba(5, 150, 105, 0.04) 1px, transparent 1px);
+    background-size: 22px 22px;
 }
 
-/* 2. ซ่อนแถบสีและ Footer เดิมของ Streamlit ให้ดูเหมือนเว็บจริง */
-header[data-testid="stHeader"] {
-    background: transparent !important;
-}
+/* ซ่อนส่วนเกินของ Streamlit */
+header[data-testid="stHeader"] { background: transparent !important; }
 #MainMenu, footer { visibility: hidden; }
 .block-container {
-    padding-top: 1.2rem !important;
+    padding-top: 1.4rem !important;
     padding-bottom: 3rem !important;
     max-width: 1180px !important;
 }
 
-/* 3. ปรับแต่งแถบด้านข้าง (Sidebar) */
+/* ================= 2. Sidebar (Clean SaaS Panel) ================= */
 [data-testid="stSidebar"] {
     background-color: #ffffff;
-    border-right: 1px solid #e2e8f0;
-    box-shadow: 2px 0 12px rgba(15, 23, 42, 0.03);
+    border-right: 1px solid rgba(15, 23, 42, 0.07);
 }
 .sidebar-brand {
-    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
-    border: 1px solid #a7f3d0;
-    border-radius: 12px;
-    padding: 12px 14px;
-    margin-bottom: 16px;
-}
-.sidebar-brand-title { font-size: 14px; font-weight: 700; color: #065f46; margin: 0; }
-.sidebar-brand-sub { font-size: 11.5px; color: #047857; margin: 2px 0 0 0; }
-
-/* 4. เปลี่ยนแท็บเป็นปุ่มแคปซูล (Modern Pill Tabs) */
-.stTabs [data-baseweb="tab-list"] {
-    background: #ffffff;
-    padding: 6px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border: 1px solid #bbf7d0;
     border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-    gap: 8px;
-    margin-bottom: 20px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+}
+.sidebar-brand-title { font-size: 14.5px; font-weight: 700; color: #064e3b; margin: 0; letter-spacing: -0.01em; }
+.sidebar-brand-sub { font-size: 12px; color: #059669; margin: 3px 0 0 0; font-weight: 500; }
+
+/* ================= 3. Segmented Control Tabs (Apple / Shadcn Style) ================= */
+.stTabs [data-baseweb="tab-list"] {
+    background-color: #e9efec;
+    padding: 5px;
+    border-radius: 14px;
+    border: 1px solid rgba(15, 23, 42, 0.05);
+    gap: 6px;
+    margin-bottom: 22px;
+    width: fit-content;
 }
 .stTabs [data-baseweb="tab"] {
     border-radius: 10px !important;
-    padding: 9px 18px !important;
+    padding: 8px 20px !important;
     font-size: 13.5px !important;
     font-weight: 600 !important;
-    color: #64748b !important;
+    color: #475569 !important;
     border: none !important;
-    transition: all 0.2s ease;
+    background: transparent !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .stTabs [data-baseweb="tab"]:hover {
-    background-color: #f1f5f9 !important;
     color: #0f172a !important;
 }
 .stTabs [aria-selected="true"] {
-    background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.28) !important;
+    background: #ffffff !important;
+    color: #047857 !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 4px 10px rgba(15, 23, 42, 0.04) !important;
 }
 .stTabs [data-baseweb="tab-highlight"] { display: none !important; }
 
-/* 5. ปรับปุ่มกดและช่องกรอกข้อมูล (Inputs & Buttons) */
+/* ================= 4. Buttons & Form Inputs ================= */
 .stButton > button[kind="primary"], .stFormSubmitButton > button {
-    background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+    background: #059669 !important;
     color: #ffffff !important;
-    border: none !important;
+    border: 1px solid #047857 !important;
     border-radius: 10px !important;
-    padding: 0.5rem 1.2rem !important;
+    padding: 0.55rem 1.35rem !important;
     font-weight: 600 !important;
-    box-shadow: 0 4px 10px rgba(5, 150, 105, 0.22) !important;
-    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(5, 150, 105, 0.2) !important;
+    transition: all 0.18s ease !important;
 }
 .stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover {
+    background: #047857 !important;
     transform: translateY(-1px);
-    box-shadow: 0 6px 14px rgba(5, 150, 105, 0.32) !important;
+    box-shadow: 0 4px 16px rgba(5, 150, 105, 0.28) !important;
 }
-div[data-baseweb="select"] > div, .stTextInput > div > div > input, .stDateInput > div > div > input {
+div[data-baseweb="select"] > div,
+.stTextInput > div > div > input,
+.stDateInput > div > div > input {
     border-radius: 10px !important;
-    border-color: #cbd5e1 !important;
+    border: 1px solid #d1d5db !important;
+    background-color: #ffffff !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+div[data-baseweb="select"] > div:focus-within,
+.stTextInput > div > div > input:focus,
+.stDateInput > div > div > input:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
 }
 
-/* 6. หัวข้อใหญ่ (Hero Banner โทนเขียว-ขาว) */
+/* ================= 5. Hero Banner (Mesh Emerald-White) ================= */
 .top-header {
-    background: linear-gradient(125deg, #065f46 0%, #059669 55%, #10b981 100%);
-    border-radius: 16px;
-    padding: 22px 26px;
-    margin-bottom: 18px;
-    box-shadow: 0 10px 25px rgba(5, 150, 105, 0.18);
+    background: linear-gradient(125deg, #064e3b 0%, #047857 50%, #0d9488 100%);
+    border-radius: 18px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 12px 30px -8px rgba(4, 120, 87, 0.28);
     position: relative;
     overflow: hidden;
 }
+.top-header::after {
+    content: "";
+    position: absolute;
+    top: -60px;
+    right: -40px;
+    width: 260px;
+    height: 260px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 70%);
+    pointer-events: none;
+}
 .top-title {
-    font-size: 21px;
+    font-size: 22px;
     font-weight: 700;
     color: #ffffff;
     margin: 0 0 12px 0;
-    letter-spacing: 0.2px;
+    letter-spacing: -0.01em;
+    position: relative;
+    z-index: 1;
 }
-.meta-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.meta-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: relative; z-index: 1; }
 .meta-tag {
-    background: rgba(255, 255, 255, 0.16);
-    backdrop-filter: blur(6px);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(8px);
+    color: #f8fafc;
+    border: 1px solid rgba(255, 255, 255, 0.22);
     padding: 4px 12px;
     border-radius: 999px;
     font-size: 12px;
 }
 .meta-tag-blue {
     background: #ffffff;
-    color: #047857;
+    color: #065f46;
     padding: 4px 13px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 .meta-tag-warn {
     background: #fef3c7;
@@ -233,50 +256,51 @@ div[data-baseweb="select"] > div, .stTextInput > div > div > input, .stDateInput
     font-weight: 600;
 }
 
-/* 7. การ์ด KPI มีมิติและลอยขึ้นเมื่อชี้เมาส์ */
-.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 4px 0 20px 0; }
+/* ================= 6. Bento KPI Cards ================= */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 14px; margin: 4px 0 22px 0; }
 .kpi-card, .kpi-card-accent {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 16px;
-    padding: 16px 20px;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    padding: 18px 20px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 6px 16px rgba(15, 23, 42, 0.03);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-.kpi-card-accent { border-top: 4px solid #10b981; }
+.kpi-card-accent { border-top: 3.5px solid #10b981; }
 .kpi-card:hover, .kpi-card-accent:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+    border-color: rgba(16, 185, 129, 0.35);
+    box-shadow: 0 10px 24px -6px rgba(15, 23, 42, 0.08);
 }
 .kpi-lbl { font-size: 12.5px; color: #64748b; font-weight: 500; }
-.kpi-val { font-size: 21px; font-weight: 700; color: #0f172a; margin-top: 5px; }
-.kpi-note { font-size: 12px; color: #64748b; margin-top: 5px; }
+.kpi-val { font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 6px; letter-spacing: -0.02em; }
+.kpi-note { font-size: 12px; color: #64748b; margin-top: 6px; }
 
-/* 8. กรอบแผงข้อมูลและกราฟ */
+/* ================= 7. Content Panels ================= */
 .panel-box {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 16px;
     padding: 18px 22px;
     margin-bottom: 14px;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 6px 16px rgba(15, 23, 42, 0.03);
 }
 .panel-title { font-size: 15.5px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; }
 .panel-sub { font-size: 12.5px; color: #64748b; margin: 0 0 8px 0; }
 
-/* 9. กล่องรวม 3 อันดับ */
+/* ================= 8. Consolidated Top-3 Alert Box ================= */
 .rank-box {
     background: #ffffff;
     border: 1.5px solid #fda4af;
     border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 6px 18px rgba(244, 63, 94, 0.09);
+    box-shadow: 0 8px 22px -6px rgba(244, 63, 94, 0.14);
     margin-bottom: 12px;
 }
 .rank-box-header {
     background: linear-gradient(90deg, #fff1f2 0%, #fff7ed 100%);
     border-bottom: 1px solid #fecdd3;
-    padding: 13px 18px;
+    padding: 14px 18px;
     font-size: 14.5px;
     font-weight: 700;
     color: #9f1239;
@@ -284,11 +308,11 @@ div[data-baseweb="select"] > div, .stTextInput > div > div > input, .stDateInput
     justify-content: space-between;
     align-items: center;
 }
-.rank-item { padding: 13px 18px; border-bottom: 1px dashed #fecdd3; transition: background 0.15s; }
+.rank-item { padding: 14px 18px; border-bottom: 1px dashed #fecdd3; transition: background 0.15s; }
 .rank-item:last-child { border-bottom: none; }
 .rank-item:first-of-type { background-color: #fffafb; }
 .rank-item:hover { background-color: #fff5f6; }
-.rank-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; }
+.rank-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
 .rank-title { font-size: 14.5px; font-weight: 700; color: #0f172a; }
 .rank-b1 { background: #ffe4e6; color: #be123c; border: 1px solid #fda4af; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
 .rank-b2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
@@ -296,7 +320,7 @@ div[data-baseweb="select"] > div, .stTextInput > div > div > input, .stDateInput
 .rank-bullets { margin: 4px 0 0 0; padding-left: 18px; color: #334155; font-size: 13px; line-height: 1.7; }
 .rank-bullets li { margin-bottom: 2px; }
 
-/* 10. ตารางและป้ายสถานะ */
+/* ================= 9. Modern Data Tables & Badges ================= */
 .prov-pill { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .safe-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981; border-radius: 14px; padding: 16px 20px; color: #065f46; font-size: 13.5px; line-height: 1.65; }
 .info-strip { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981; color: #065f46; padding: 12px 16px; border-radius: 12px; font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
@@ -304,17 +328,26 @@ div[data-baseweb="select"] > div, .stTextInput > div > div > input, .stDateInput
 
 .tbl-wrap {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 16px;
     overflow-x: auto;
     margin-top: 8px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    margin-bottom: 22px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 6px 16px rgba(15, 23, 42, 0.03);
 }
 .m-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.m-table th { background: #f1f5f9; color: #334155; font-weight: 700; font-size: 12.5px; padding: 12px 16px; text-align: left; border-bottom: 1.5px solid #cbd5e1; white-space: nowrap; }
-.m-table td { padding: 11px 16px; border-bottom: 1px solid #f1f5f9; color: #1e293b; vertical-align: middle; }
-.m-table tbody tr:nth-child(even) { background-color: #f8fafc; }
+.m-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 13px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+.m-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #1e293b; vertical-align: middle; }
+.m-table tbody tr:nth-child(even) { background-color: #fafcfb; }
 .m-table tbody tr:hover { background-color: #ecfdf5; transition: background 0.15s; }
 .m-table tr:last-child td { border-bottom: none; }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -323,7 +356,7 @@ div[data-baseweb="select"] > div, .stTextInput > div > div > input, .stDateInput
 
 .badge-red { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .badge-ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.sec-label { font-size: 15.5px; font-weight: 700; color: #0f172a; margin: 18px 0 8px 0; }
+.sec-label { font-size: 15.5px; font-weight: 700; color: #0f172a; margin: 18px 0 8px 0; letter-spacing: -0.01em; }
 .hint-text { font-size: 12.5px; color: #64748b; margin-top: 4px; }
 </style>
 """)
