@@ -98,266 +98,218 @@ CSV_REGISTRY = "tracking_registry.csv"
 # =========================================================
 render_html("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&display=swap');
 
-/* ================= 1. Base & Typography (SaaS Pairing) ================= */
+/* ================= 1. Base & Official Public Health Font ================= */
 html, body, [class*="css"] {
-    font-family: 'Plus Jakarta Sans', 'Noto Sans Thai', sans-serif !important;
+    font-family: 'Noto Sans Thai', sans-serif !important;
     font-size: 14px !important;
-    color: #0f172a;
-    -webkit-font-smoothing: antialiased;
+    color: #1f2937;
 }
-.stApp {
-    background-color: #f5f8f7;
-    background-image: radial-gradient(rgba(5, 150, 105, 0.04) 1px, transparent 1px);
-    background-size: 22px 22px;
+h1, h2, h3, .top-title, .panel-title, .sec-label {
+    font-family: 'Prompt', 'Noto Sans Thai', sans-serif !important;
 }
+.stApp { background-color: #f3f6f4; }
 
-/* ซ่อนส่วนเกินของ Streamlit */
 header[data-testid="stHeader"] { background: transparent !important; }
 #MainMenu, footer { visibility: hidden; }
 .block-container {
-    padding-top: 1.4rem !important;
-    padding-bottom: 3rem !important;
+    padding-top: 1.2rem !important;
+    padding-bottom: 2.8rem !important;
     max-width: 1180px !important;
 }
 
-/* ================= 2. Sidebar (Clean SaaS Panel) ================= */
+/* ================= 2. Sidebar ================= */
 [data-testid="stSidebar"] {
     background-color: #ffffff;
-    border-right: 1px solid rgba(15, 23, 42, 0.07);
+    border-right: 1px solid #d1d5db;
 }
 .sidebar-brand {
-    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-    border: 1px solid #bbf7d0;
-    border-radius: 14px;
-    padding: 14px 16px;
+    background-color: #006837;
+    border-radius: 8px;
+    padding: 13px 15px;
+    margin-bottom: 16px;
+}
+.sidebar-brand-title { font-size: 14.5px; font-weight: 600; color: #ffffff; margin: 0; }
+.sidebar-brand-sub { font-size: 11.5px; color: #d1fae5; margin: 2px 0 0 0; }
+
+/* ================= 3. Official Portal Tabs ================= */
+.stTabs [data-baseweb="tab-list"] {
+    background-color: #ffffff;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    gap: 16px;
     margin-bottom: 18px;
 }
-.sidebar-brand-title { font-size: 14.5px; font-weight: 700; color: #064e3b; margin: 0; letter-spacing: -0.01em; }
-.sidebar-brand-sub { font-size: 12px; color: #059669; margin: 3px 0 0 0; font-weight: 500; }
-
-/* ================= 3. Segmented Control Tabs (Apple / Shadcn Style) ================= */
-.stTabs [data-baseweb="tab-list"] {
-    background-color: #e9efec;
-    padding: 5px;
-    border-radius: 14px;
-    border: 1px solid rgba(15, 23, 42, 0.05);
-    gap: 6px;
-    margin-bottom: 22px;
-    width: fit-content;
-}
 .stTabs [data-baseweb="tab"] {
-    border-radius: 10px !important;
-    padding: 8px 20px !important;
-    font-size: 13.5px !important;
-    font-weight: 600 !important;
-    color: #475569 !important;
-    border: none !important;
-    background: transparent !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.stTabs [data-baseweb="tab"]:hover {
-    color: #0f172a !important;
+    padding: 11px 8px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: #4b5563 !important;
+    border-bottom: 3px solid transparent !important;
 }
 .stTabs [aria-selected="true"] {
-    background: #ffffff !important;
-    color: #047857 !important;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 4px 10px rgba(15, 23, 42, 0.04) !important;
+    color: #006837 !important;
+    font-weight: 700 !important;
+    border-bottom: 3px solid #006837 !important;
 }
 .stTabs [data-baseweb="tab-highlight"] { display: none !important; }
 
-/* ================= 4. Buttons & Form Inputs ================= */
+/* ================= 4. Buttons & Inputs ================= */
 .stButton > button[kind="primary"], .stFormSubmitButton > button {
-    background: #059669 !important;
+    background-color: #006837 !important;
     color: #ffffff !important;
-    border: 1px solid #047857 !important;
-    border-radius: 10px !important;
-    padding: 0.55rem 1.35rem !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 1.25rem !important;
     font-weight: 600 !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(5, 150, 105, 0.2) !important;
-    transition: all 0.18s ease !important;
 }
 .stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover {
-    background: #047857 !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(5, 150, 105, 0.28) !important;
+    background-color: #00522b !important;
 }
 div[data-baseweb="select"] > div,
 .stTextInput > div > div > input,
 .stDateInput > div > div > input {
-    border-radius: 10px !important;
-    border: 1px solid #d1d5db !important;
-    background-color: #ffffff !important;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-div[data-baseweb="select"] > div:focus-within,
-.stTextInput > div > div > input:focus,
-.stDateInput > div > div > input:focus {
-    border-color: #10b981 !important;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+    border-radius: 6px !important;
+    border: 1px solid #cbd5e1 !important;
 }
 
-/* ================= 5. Hero Banner (Mesh Emerald-White) ================= */
+/* ================= 5. Header Banner (เขียวสาธารณสุข-ขาว) ================= */
 .top-header {
-    background: linear-gradient(125deg, #064e3b 0%, #047857 50%, #0d9488 100%);
-    border-radius: 18px;
-    padding: 24px 28px;
-    margin-bottom: 20px;
-    box-shadow: 0 12px 30px -8px rgba(4, 120, 87, 0.28);
-    position: relative;
-    overflow: hidden;
-}
-.top-header::after {
-    content: "";
-    position: absolute;
-    top: -60px;
-    right: -40px;
-    width: 260px;
-    height: 260px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 70%);
-    pointer-events: none;
+    background: linear-gradient(90deg, #005a2f 0%, #007a40 100%);
+    border-bottom: 4px solid #f59e0b;
+    border-radius: 8px;
+    padding: 18px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 .top-title {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 20px;
+    font-weight: 600;
     color: #ffffff;
-    margin: 0 0 12px 0;
-    letter-spacing: -0.01em;
-    position: relative;
-    z-index: 1;
+    margin: 0 0 10px 0;
 }
-.meta-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: relative; z-index: 1; }
+.meta-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .meta-tag {
-    background: rgba(255, 255, 255, 0.14);
-    backdrop-filter: blur(8px);
-    color: #f8fafc;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    padding: 4px 12px;
-    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 3px 11px;
+    border-radius: 4px;
     font-size: 12px;
 }
 .meta-tag-blue {
     background: #ffffff;
-    color: #065f46;
-    padding: 4px 13px;
-    border-radius: 999px;
+    color: #006837;
+    padding: 3px 12px;
+    border-radius: 4px;
     font-size: 12px;
     font-weight: 700;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 .meta-tag-warn {
     background: #fef3c7;
     color: #92400e;
-    border: 1px solid #fde68a;
-    padding: 4px 12px;
-    border-radius: 999px;
+    border: 1px solid #fcd34d;
+    padding: 3px 11px;
+    border-radius: 4px;
     font-size: 12px;
     font-weight: 600;
 }
 
-/* ================= 6. Bento KPI Cards ================= */
-.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 14px; margin: 4px 0 22px 0; }
+/* ================= 6. Cards & Panels (กล่องขอบคมสไตล์เว็บหน่วยงาน) ================= */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 4px 0 18px 0; }
 .kpi-card, .kpi-card-accent {
     background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 16px;
-    padding: 18px 20px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 6px 16px rgba(15, 23, 42, 0.03);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    border: 1px solid #d1d5db;
+    border-top: 3px solid #006837;
+    border-radius: 8px;
+    padding: 14px 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
-.kpi-card-accent { border-top: 3.5px solid #10b981; }
-.kpi-card:hover, .kpi-card-accent:hover {
-    transform: translateY(-2px);
-    border-color: rgba(16, 185, 129, 0.35);
-    box-shadow: 0 10px 24px -6px rgba(15, 23, 42, 0.08);
-}
-.kpi-lbl { font-size: 12.5px; color: #64748b; font-weight: 500; }
-.kpi-val { font-size: 22px; font-weight: 700; color: #0f172a; margin-top: 6px; letter-spacing: -0.02em; }
-.kpi-note { font-size: 12px; color: #64748b; margin-top: 6px; }
+.kpi-lbl { font-size: 12.5px; color: #4b5563; font-weight: 500; }
+.kpi-val { font-size: 21px; font-weight: 700; color: #111827; margin-top: 4px; }
+.kpi-note { font-size: 12px; color: #6b7280; margin-top: 4px; }
 
-/* ================= 7. Content Panels ================= */
 .panel-box {
     background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 16px;
-    padding: 18px 22px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 16px 20px;
     margin-bottom: 14px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 6px 16px rgba(15, 23, 42, 0.03);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
-.panel-title { font-size: 15.5px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; }
-.panel-sub { font-size: 12.5px; color: #64748b; margin: 0 0 8px 0; }
+.panel-title { font-size: 15px; font-weight: 600; color: #006837; margin: 0 0 4px 0; }
+.panel-sub { font-size: 12.5px; color: #6b7280; margin: 0 0 8px 0; }
 
-/* ================= 8. Consolidated Top-3 Alert Box ================= */
+/* ================= 7. Top-3 Alert Box ================= */
 .rank-box {
     background: #ffffff;
-    border: 1.5px solid #fda4af;
-    border-radius: 16px;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 8px 22px -6px rgba(244, 63, 94, 0.14);
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.06);
     margin-bottom: 12px;
 }
 .rank-box-header {
-    background: linear-gradient(90deg, #fff1f2 0%, #fff7ed 100%);
-    border-bottom: 1px solid #fecdd3;
-    padding: 14px 18px;
-    font-size: 14.5px;
+    background-color: #fef2f2;
+    border-bottom: 1px solid #fecaca;
+    padding: 11px 16px;
+    font-size: 14px;
     font-weight: 700;
-    color: #9f1239;
+    color: #991b1b;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-.rank-item { padding: 14px 18px; border-bottom: 1px dashed #fecdd3; transition: background 0.15s; }
+.rank-item { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; }
 .rank-item:last-child { border-bottom: none; }
-.rank-item:first-of-type { background-color: #fffafb; }
-.rank-item:hover { background-color: #fff5f6; }
-.rank-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
-.rank-title { font-size: 14.5px; font-weight: 700; color: #0f172a; }
-.rank-b1 { background: #ffe4e6; color: #be123c; border: 1px solid #fda4af; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
-.rank-b2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
-.rank-b3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
-.rank-bullets { margin: 4px 0 0 0; padding-left: 18px; color: #334155; font-size: 13px; line-height: 1.7; }
+.rank-item:first-of-type { background-color: #fffbfb; }
+.rank-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; }
+.rank-title { font-size: 14.5px; font-weight: 700; color: #111827; }
+.rank-b1 { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 4px; white-space: nowrap; }
+.rank-b2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 4px; white-space: nowrap; }
+.rank-b3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 4px; white-space: nowrap; }
+.rank-bullets { margin: 4px 0 0 0; padding-left: 18px; color: #374151; font-size: 13px; line-height: 1.65; }
 .rank-bullets li { margin-bottom: 2px; }
 
-/* ================= 9. Modern Data Tables & Badges ================= */
-.prov-pill { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.safe-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981; border-radius: 14px; padding: 16px 20px; color: #065f46; font-size: 13.5px; line-height: 1.65; }
-.info-strip { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981; color: #065f46; padding: 12px 16px; border-radius: 12px; font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
-.rec-preview { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin: 8px 0 14px 0; font-size: 13px; color: #334155; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+/* ================= 8. Tables & Badges (ตารางทางการหัวเขียวอ่อน) ================= */
+.prov-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.safe-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #006837; border-radius: 8px; padding: 14px 18px; color: #065f46; font-size: 13.5px; line-height: 1.6; }
+.info-strip { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #006837; color: #166534; padding: 11px 15px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; line-height: 1.6; }
+.rec-preview { background: #f9fafb; border: 1px solid #d1d5db; border-radius: 6px; padding: 10px 14px; margin: 8px 0 12px 0; font-size: 13px; color: #374151; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
 
 .tbl-wrap {
     background: #ffffff;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
     overflow-x: auto;
     margin-top: 8px;
-    margin-bottom: 22px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 6px 16px rgba(15, 23, 42, 0.03);
+    margin-bottom: 18px;
 }
 .m-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .m-table th {
-    background: #f8fafc;
-    color: #475569;
+    background: #e6f4ed;
+    color: #00522b;
     font-weight: 700;
-    font-size: 12px;
-    padding: 13px 16px;
+    font-size: 12.5px;
+    padding: 11px 14px;
     text-align: left;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 2px solid #006837;
     white-space: nowrap;
 }
-.m-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #1e293b; vertical-align: middle; }
-.m-table tbody tr:nth-child(even) { background-color: #fafcfb; }
-.m-table tbody tr:hover { background-color: #ecfdf5; transition: background 0.15s; }
+.m-table td { padding: 10px 14px; border-bottom: 1px solid #e5e7eb; color: #1f2937; vertical-align: middle; }
+.m-table tbody tr:nth-child(even) { background-color: #f9fafb; }
+.m-table tbody tr:hover { background-color: #f0fdf4; }
 .m-table tr:last-child td { border-bottom: none; }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ctr { text-align: center !important; }
-.muted { font-size: 12px; color: #64748b; }
+.muted { font-size: 12px; color: #6b7280; }
 
-.badge-red { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.badge-ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.sec-label { font-size: 15.5px; font-weight: 700; color: #0f172a; margin: 18px 0 8px 0; letter-spacing: -0.01em; }
-.hint-text { font-size: 12.5px; color: #64748b; margin-top: 4px; }
+.badge-red { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 2px 9px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge-ok { background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 9px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sec-label { font-size: 15px; font-weight: 600; color: #006837; margin: 16px 0 8px 0; border-left: 4px solid #006837; padding-left: 10px; }
+.hint-text { font-size: 12.5px; color: #6b7280; margin-top: 4px; }
 </style>
 """)
 
