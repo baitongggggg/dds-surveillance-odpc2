@@ -100,192 +100,230 @@ render_html("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
 
+/* 1. ฟอนต์และพื้นหลังหลัก */
 html, body, [class*="css"] {
     font-family: 'Noto Sans Thai', sans-serif !important;
     font-size: 14px !important;
     color: #1e293b;
 }
-.stApp { background-color: #f4f7f5; }
+.stApp {
+    background: linear-gradient(180deg, #f0f7f4 0%, #f8fafc 45%, #f8fafc 100%);
+}
+
+/* 2. ซ่อนแถบสีและ Footer เดิมของ Streamlit ให้ดูเหมือนเว็บจริง */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+}
+#MainMenu, footer { visibility: hidden; }
+.block-container {
+    padding-top: 1.2rem !important;
+    padding-bottom: 3rem !important;
+    max-width: 1180px !important;
+}
+
+/* 3. ปรับแต่งแถบด้านข้าง (Sidebar) */
 [data-testid="stSidebar"] {
     background-color: #ffffff;
     border-right: 1px solid #e2e8f0;
+    box-shadow: 2px 0 12px rgba(15, 23, 42, 0.03);
 }
-.block-container {
-    padding-top: 1.5rem !important;
-    padding-bottom: 2.5rem !important;
-    max-width: 1140px !important;
+.sidebar-brand {
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    border: 1px solid #a7f3d0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
 }
+.sidebar-brand-title { font-size: 14px; font-weight: 700; color: #065f46; margin: 0; }
+.sidebar-brand-sub { font-size: 11.5px; color: #047857; margin: 2px 0 0 0; }
 
-/* แถบแท็บโทนเขียว-ขาว */
+/* 4. เปลี่ยนแท็บเป็นปุ่มแคปซูล (Modern Pill Tabs) */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 24px;
-    border-bottom: 1.5px solid #e2e8f0;
-    margin-bottom: 18px;
+    background: #ffffff;
+    padding: 6px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    gap: 8px;
+    margin-bottom: 20px;
 }
 .stTabs [data-baseweb="tab"] {
-    padding: 9px 4px;
-    font-size: 14px !important;
-    font-weight: 500;
-    color: #64748b;
+    border-radius: 10px !important;
+    padding: 9px 18px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    border: none !important;
+    transition: all 0.2s ease;
+}
+.stTabs [data-baseweb="tab"]:hover {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
 }
 .stTabs [aria-selected="true"] {
-    color: #059669 !important;
-    font-weight: 700 !important;
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.28) !important;
+}
+.stTabs [data-baseweb="tab-highlight"] { display: none !important; }
+
+/* 5. ปรับปุ่มกดและช่องกรอกข้อมูล (Inputs & Buttons) */
+.stButton > button[kind="primary"], .stFormSubmitButton > button {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.5rem 1.2rem !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 10px rgba(5, 150, 105, 0.22) !important;
+    transition: all 0.2s ease !important;
+}
+.stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(5, 150, 105, 0.32) !important;
+}
+div[data-baseweb="select"] > div, .stTextInput > div > div > input, .stDateInput > div > div > input {
+    border-radius: 10px !important;
+    border-color: #cbd5e1 !important;
 }
 
-/* หัวข้อใหญ่: โทนเขียวมรกต-ขาว */
+/* 6. หัวข้อใหญ่ (Hero Banner โทนเขียว-ขาว) */
 .top-header {
-    background: linear-gradient(135deg, #047857 0%, #10b981 100%);
-    border-radius: 14px;
-    padding: 18px 22px;
-    margin-bottom: 16px;
-    box-shadow: 0 6px 18px rgba(5, 150, 105, 0.16);
+    background: linear-gradient(125deg, #065f46 0%, #059669 55%, #10b981 100%);
+    border-radius: 16px;
+    padding: 22px 26px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 25px rgba(5, 150, 105, 0.18);
+    position: relative;
+    overflow: hidden;
 }
 .top-title {
-    font-size: 20px;
+    font-size: 21px;
     font-weight: 700;
     color: #ffffff;
-    margin: 0 0 10px 0;
-    letter-spacing: 0.1px;
+    margin: 0 0 12px 0;
+    letter-spacing: 0.2px;
 }
 .meta-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .meta-tag {
-    background: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(6px);
     color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    padding: 3px 11px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 4px 12px;
     border-radius: 999px;
     font-size: 12px;
 }
 .meta-tag-blue {
     background: #ffffff;
     color: #047857;
-    padding: 3px 12px;
+    padding: 4px 13px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 .meta-tag-warn {
     background: #fef3c7;
     color: #92400e;
     border: 1px solid #fde68a;
-    padding: 3px 11px;
+    padding: 4px 12px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
 }
 
-/* การ์ด KPI และกรอบแผงข้อมูล (ขอบมน มีเงาบางๆ) */
-.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 4px 0 18px 0; }
-.kpi-card {
+/* 7. การ์ด KPI มีมิติและลอยขึ้นเมื่อชี้เมาส์ */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 4px 0 20px 0; }
+.kpi-card, .kpi-card-accent {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 14px 18px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.kpi-card-accent {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-top: 3.5px solid #10b981;
-    border-radius: 14px;
-    padding: 14px 18px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+.kpi-card-accent { border-top: 4px solid #10b981; }
+.kpi-card:hover, .kpi-card-accent:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 .kpi-lbl { font-size: 12.5px; color: #64748b; font-weight: 500; }
-.kpi-val { font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px; }
-.kpi-note { font-size: 12px; color: #64748b; margin-top: 4px; }
+.kpi-val { font-size: 21px; font-weight: 700; color: #0f172a; margin-top: 5px; }
+.kpi-note { font-size: 12px; color: #64748b; margin-top: 5px; }
 
+/* 8. กรอบแผงข้อมูลและกราฟ */
 .panel-box {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 16px 20px;
+    border-radius: 16px;
+    padding: 18px 22px;
     margin-bottom: 14px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
 }
-.panel-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; }
+.panel-title { font-size: 15.5px; font-weight: 700; color: #0f172a; margin: 0 0 4px 0; }
 .panel-sub { font-size: 12.5px; color: #64748b; margin: 0 0 8px 0; }
 
-/* กล่องรวม 3 อันดับ (คงสีเตือนเดิมไว้ ไม่เปลี่ยน) */
+/* 9. กล่องรวม 3 อันดับ */
 .rank-box {
     background: #ffffff;
     border: 1.5px solid #fda4af;
-    border-radius: 14px;
+    border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 4px 14px rgba(244, 63, 94, 0.08);
-    margin-bottom: 10px;
+    box-shadow: 0 6px 18px rgba(244, 63, 94, 0.09);
+    margin-bottom: 12px;
 }
 .rank-box-header {
     background: linear-gradient(90deg, #fff1f2 0%, #fff7ed 100%);
     border-bottom: 1px solid #fecdd3;
-    padding: 11px 16px;
-    font-size: 14px;
+    padding: 13px 18px;
+    font-size: 14.5px;
     font-weight: 700;
     color: #9f1239;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-.rank-item {
-    padding: 12px 16px;
-    border-bottom: 1px dashed #fecdd3;
-}
+.rank-item { padding: 13px 18px; border-bottom: 1px dashed #fecdd3; transition: background 0.15s; }
 .rank-item:last-child { border-bottom: none; }
 .rank-item:first-of-type { background-color: #fffafb; }
+.rank-item:hover { background-color: #fff5f6; }
 .rank-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; }
 .rank-title { font-size: 14.5px; font-weight: 700; color: #0f172a; }
-.rank-b1 { background: #ffe4e6; color: #be123c; border: 1px solid #fda4af; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
-.rank-b2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
-.rank-b3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
-.rank-bullets { margin: 4px 0 0 0; padding-left: 18px; color: #334155; font-size: 13px; line-height: 1.65; }
+.rank-b1 { background: #ffe4e6; color: #be123c; border: 1px solid #fda4af; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.rank-b2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.rank-b3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.rank-bullets { margin: 4px 0 0 0; padding-left: 18px; color: #334155; font-size: 13px; line-height: 1.7; }
 .rank-bullets li { margin-bottom: 2px; }
 
-.prov-pill {
-    display: inline-block; padding: 2px 9px; border-radius: 7px;
-    font-size: 12px; font-weight: 600; white-space: nowrap;
-}
+/* 10. ตารางและป้ายสถานะ */
+.prov-pill { display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.safe-card { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981; border-radius: 14px; padding: 16px 20px; color: #065f46; font-size: 13.5px; line-height: 1.65; }
+.info-strip { background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981; color: #065f46; padding: 12px 16px; border-radius: 12px; font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
+.rec-preview { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin: 8px 0 14px 0; font-size: 13px; color: #334155; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
 
-.safe-card {
-    background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981;
-    border-radius: 12px; padding: 15px 18px; color: #065f46; font-size: 13.5px; line-height: 1.65;
-}
-.info-strip {
-    background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981;
-    color: #065f46; padding: 11px 15px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; line-height: 1.6;
-}
-.rec-preview {
-    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
-    padding: 10px 14px; margin: 6px 0 12px 0; font-size: 13px; color: #334155;
-    display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
-}
-
-/* ตาราง (ขอบมน เงาบางๆ อ่านง่าย) */
 .tbl-wrap {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 14px;
+    border-radius: 16px;
     overflow-x: auto;
     margin-top: 8px;
-    margin-bottom: 18px;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    margin-bottom: 20px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
 }
 .m-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.m-table th {
-    background: #f1f5f9; color: #334155; font-weight: 700; font-size: 12.5px;
-    padding: 11px 14px; text-align: left; border-bottom: 1.5px solid #cbd5e1; white-space: nowrap;
-}
-.m-table td { padding: 9.5px 14px; border-bottom: 1px solid #f1f5f9; color: #1e293b; vertical-align: middle; }
+.m-table th { background: #f1f5f9; color: #334155; font-weight: 700; font-size: 12.5px; padding: 12px 16px; text-align: left; border-bottom: 1.5px solid #cbd5e1; white-space: nowrap; }
+.m-table td { padding: 11px 16px; border-bottom: 1px solid #f1f5f9; color: #1e293b; vertical-align: middle; }
 .m-table tbody tr:nth-child(even) { background-color: #f8fafc; }
-.m-table tbody tr:hover { background-color: #ecfdf5; }
+.m-table tbody tr:hover { background-color: #ecfdf5; transition: background 0.15s; }
 .m-table tr:last-child td { border-bottom: none; }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ctr { text-align: center !important; }
 .muted { font-size: 12px; color: #64748b; }
 
-.badge-red { background: #fff1f2; color: #be123c; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.badge-ok { background: #ecfdf5; color: #047857; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.sec-label { font-size: 15px; font-weight: 700; color: #0f172a; margin: 16px 0 6px 0; }
+.badge-red { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge-ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sec-label { font-size: 15.5px; font-weight: 700; color: #0f172a; margin: 18px 0 8px 0; }
 .hint-text { font-size: 12.5px; color: #64748b; margin-top: 4px; }
 </style>
 """)
