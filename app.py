@@ -1016,56 +1016,75 @@ with tab3:
                     st.success("บันทึกเรียบร้อยแล้ว")
                     st.rerun()
 
-        # ส่วนที่ 3: ตารางทะเบียนติดตามผล พร้อมตัวกรองสถานะ
-        c_tbl_title, c_tbl_filter = st.columns([2.5, 1.5])
-        with c_tbl_title:
-            render_html('<div class="sec-label">ทะเบียนประวัติการติดตามผล</div>')
-        with c_tbl_filter:
-            tbl_filter = st.radio(
-                "กรองทะเบียน",
-                ["ทั้งหมด", "เฉพาะที่ชี้เป้า", "รอปิดยอดจริง"],
-                horizontal=True,
-                label_visibility="collapsed"
-            )
+        # ส่วนที่ 3: พับเก็บทะเบียนประวัติการติดตามผล + ปุ่มดาวน์โหลด CSV
+        with st.expander(f"ดูทะเบียนประวัติการติดตามผลทั้งหมด ({len(reg_df):,} รายการ)", expanded=False):
+            c_flt, c_dl = st.columns([2.5, 1.2])
+            with c_flt:
+                tbl_filter = st.radio(
+                    "กรองทะเบียน",
+                    ["ทั้งหมด", "เฉพาะที่ชี้เป้า", "รอปิดยอดจริง"],
+                    horizontal=True,
+                    label_visibility="collapsed"
+                )
 
-        show_reg = reg_df.copy()
-        if tbl_filter == "เฉพาะที่ชี้เป้า":
-            show_reg = show_reg[show_reg["is_flagged"].astype(str).str.lower() == "true"]
-        elif tbl_filter == "รอปิดยอดจริง":
-            show_reg = show_reg[show_reg["settled_actual_cases"].isna() | (show_reg["settled_actual_cases"].astype(str).str.strip() == "")]
+            show_reg = reg_df.copy()
+            if tbl_filter == "เฉพาะที่ชี้เป้า":
+                show_reg = show_reg[show_reg["is_flagged"].astype(str).str.lower() == "true"]
+            elif tbl_filter == "รอปิดยอดจริง":
+                show_reg = show_reg[
+                    show_reg["settled_actual_cases"].isna() |
+                    (show_reg["settled_actual_cases"].astype(str).str.strip() == "")
+                ]
 
-        if show_reg.empty:
-            st.info("ไม่พบรายการตามตัวกรองที่เลือก")
-        else:
-            reg_rows = []
-            for _, r in show_reg.iterrows():
-                f_badge = '<span class="badge-red">ชี้เป้า</span>' if str(r["is_flagged"]).lower() == "true" else '<span class="badge-ok">ปกติ</span>'
-                act_s = clean_str(r["settled_actual_cases"])
-                act_txt = f"<b>{fmt_int(act_s)} ราย</b>" if act_s != "" else '<span class="muted">รอยอดนิ่ง</span>'
-                pt = get_prov_theme(r["province_code"])
-                prov_td = f'<td><span class="prov-pill" style="background:{pt["bg"]}; color:{pt["color"]};">จ.{r["province_name"]}</span></td>' if is_all_prov else ""
-                reg_rows.append(f"""
-                <tr>
-                    <td><b>{r['target_week']}</b><div class="muted">{r['run_id']}</div></td>
-                    {prov_td}
-                    <td><b>{r['disease_name']}</b></td>
-                    <td class="num"><b>{fmt_int(r['frozen_forecast'])}</b> / <span class="muted">{fmt_int(r['frozen_threshold'])}</span></td>
-                    <td class="ctr">{f_badge}</td>
-                    <td>{clean_str(r['field_result']) or '<span class="muted">-</span>'}</td>
-                    <td>{clean_str(r['action_taken']) or '<span class="muted">-</span>'}</td>
-                    <td class="num">{act_txt}</td>
-                </tr>
-                """)
-            prov_th = "<th>จังหวัด</th>" if is_all_prov else ""
-            render_html(f"""
-            <div class="tbl-wrap"><table class="m-table">
-                <thead>
+            with c_dl:
+                export_cols = [
+                    "run_id", "target_week", "province_code", "province_name",
+                    "disease_code", "disease_name", "frozen_forecast", "frozen_threshold",
+                    "is_flagged", "alert_sent_time", "check_start_time",
+                    "field_result", "action_taken", "settled_actual_cases"
+                ]
+                valid_cols = [c for c in export_cols if c in show_reg.columns]
+                csv_bytes = show_reg[valid_cols].to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
+                st.download_button(
+                    label="ดาวน์โหลดทะเบียน (CSV)",
+                    data=csv_bytes,
+                    file_name=f"tracking_registry_{meta['cutoff_date']}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+
+            if show_reg.empty:
+                st.info("ไม่พบรายการตามตัวกรองที่เลือก")
+            else:
+                reg_rows = []
+                for _, r in show_reg.iterrows():
+                    f_badge = '<span class="badge-red">ชี้เป้า</span>' if str(r["is_flagged"]).lower() == "true" else '<span class="badge-ok">ปกติ</span>'
+                    act_s = clean_str(r["settled_actual_cases"])
+                    act_txt = f"<b>{fmt_int(act_s)} ราย</b>" if act_s != "" else '<span class="muted">รอยอดนิ่ง</span>'
+                    pt = get_prov_theme(r["province_code"])
+                    prov_td = f'<td><span class="prov-pill" style="background:{pt["bg"]}; color:{pt["color"]};">จ.{r["province_name"]}</span></td>' if is_all_prov else ""
+                    reg_rows.append(f"""
                     <tr>
-                        <th>สัปดาห์เป้าหมาย</th>{prov_th}<th>โรค</th>
-                        <th class="num">คาด / เกณฑ์</th><th class="ctr">สถานะ</th>
-                        <th>ผลภาคสนาม</th><th>การดำเนินการ</th><th class="num">ยอดจริงนิ่งแล้ว</th>
+                        <td><b>{r['target_week']}</b><div class="muted">{r['run_id']}</div></td>
+                        {prov_td}
+                        <td><b>{r['disease_name']}</b></td>
+                        <td class="num"><b>{fmt_int(r['frozen_forecast'])}</b> / <span class="muted">{fmt_int(r['frozen_threshold'])}</span></td>
+                        <td class="ctr">{f_badge}</td>
+                        <td>{clean_str(r['field_result']) or '<span class="muted">-</span>'}</td>
+                        <td>{clean_str(r['action_taken']) or '<span class="muted">-</span>'}</td>
+                        <td class="num">{act_txt}</td>
                     </tr>
-                </thead>
-                <tbody>{"".join(reg_rows)}</tbody>
-            </table></div>
-            """)
+                    """)
+                prov_th = "<th>จังหวัด</th>" if is_all_prov else ""
+                render_html(f"""
+                <div class="tbl-wrap"><table class="m-table">
+                    <thead>
+                        <tr>
+                            <th>สัปดาห์เป้าหมาย</th>{prov_th}<th>โรค</th>
+                            <th class="num">คาด / เกณฑ์</th><th class="ctr">สถานะ</th>
+                            <th>ผลภาคสนาม</th><th>การดำเนินการ</th><th class="num">ยอดจริงนิ่งแล้ว</th>
+                        </tr>
+                    </thead>
+                    <tbody>{"".join(reg_rows)}</tbody>
+                </table></div>
+                """)
