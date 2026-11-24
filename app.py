@@ -549,6 +549,7 @@ header[data-testid="stHeader"] {
     font-size: 13.5px;
     line-height: 1.65;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+    margin-bottom: 14px;
 }
 
 /* ================= DATA TABLES & BADGES ================= */
@@ -638,6 +639,19 @@ header[data-testid="stHeader"] {
     background-color: var(--primary-dark) !important;
 }
 
+.stButton > button[kind="secondary"] {
+    background-color: #f0fdf4 !important;
+    color: var(--primary) !important;
+    border: 1px solid #86efac !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    padding: 0.55rem 0.9rem !important;
+}
+.stButton > button[kind="secondary"]:hover {
+    background-color: #dcfce7 !important;
+    border-color: var(--primary) !important;
+}
+
 .app-footer {
     margin-top: 28px;
     padding: 14px 20px;
@@ -654,6 +668,27 @@ header[data-testid="stHeader"] {
 }
 </style>
 """)
+
+
+# =========================================================
+# หน้าต่างป๊อปอัปแสดงระเบียบวิธีและเกณฑ์ทางสถิติ (@st.dialog)
+# =========================================================
+@st.dialog("ระเบียบวิธีและเกณฑ์ทางระบาดวิทยา (Methodology)")
+def show_methodology_modal():
+    st.markdown("""
+    **1. แหล่งข้อมูลและขอบเขตการเฝ้าระวัง**
+    * ใช้ข้อมูลรายงานผู้ป่วยรายสัปดาห์จากระบบเฝ้าระวังโรคดิจิทัล (**DDS**) ครอบคลุมพื้นที่ **5 จังหวัดเขตสุขภาพที่ 2** (พิษณุโลก, อุตรดิตถ์, ตาก, สุโขทัย, เพชรบูรณ์) โดยผ่านกระบวนการตัดข้อมูลส่วนบุคคล (De-identification) ตามมาตรฐาน PDPA เรียบร้อยแล้ว
+
+    **2. เกณฑ์เตือนปกติ (Alert Threshold — P75)**
+    * คำนวณแยกตามรายจังหวัดและรายโรค จากค่า **เปอร์เซ็นไทล์ที่ 75 (P75)** ของจำนวนผู้ป่วยรายสัปดาห์ย้อนหลังสูงสุด 104 สัปดาห์ (2 ปี)
+    * หากยอดคาดการณ์สัปดาห์หน้าสูงเท่ากับหรือมากกว่าค่า P75 ระบบจะติดป้าย **"เฝ้าระวัง"** เพื่อให้ทีมระบาดวิทยาตรวจสอบเป็นลำดับแรก
+
+    **3. แบบจำลองพยากรณ์ล่วงหน้า 1 สัปดาห์**
+    * ใช้แบบจำลองอนุกรมเวลา **Simple Exponential Smoothing** พร้อมคำนวณช่วงความเชื่อมั่น **95% Prediction Interval** เพื่อประมาณการแนวโน้มสัปดาห์ถัดไป
+
+    **4. ข้อควรระวังเรื่องความครบถ้วนของข้อมูล**
+    * ข้อมูลช่วง **1–2 สัปดาห์ล่าสุด** เป็นข้อมูลเบื้องต้นที่หน่วยบริการกำลังทยอยบันทึกเข้าระบบ (Reporting Lag) ควรตรวจสอบร่วมกับผลสอบสวนโรคภาคสนามก่อนสรุปผล
+    """)
 
 
 # =========================================================
@@ -856,22 +891,24 @@ def predict_for_date(weekly_df, cutoff_str):
 
 
 # =========================================================
-# 3. โหลดข้อมูลหลัก + แถบหน่วยงานด้านบน
+# 3. โหลดข้อมูลหลัก + แถบหน่วยงานด้านบนและปุ่มระเบียบวิธี
 # =========================================================
 latest_json, weekly_df = load_files()
 
-render_html("""
-<div class="app-topbar">
-    <div class="app-org-wrap">
-        <span class="app-status-dot"></span>
-        <span class="app-org-name">สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก</span>
-        <span class="app-org-dept">กรมควบคุมโรค • กลุ่มระบาดวิทยาและตอบโต้ภาวะฉุกเฉินทางสาธารณสุข</span>
+top_c1, top_c2 = st.columns([4.0, 1.15], gap="small")
+with top_c1:
+    render_html("""
+    <div class="app-topbar">
+        <div class="app-org-wrap">
+            <span class="app-status-dot"></span>
+            <span class="app-org-name">สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก</span>
+            <span class="app-org-dept">กรมควบคุมโรค • กลุ่มระบาดวิทยาและตอบโต้ภาวะฉุกเฉินทางสาธารณสุข</span>
+        </div>
     </div>
-    <div style="font-size:12px; color:#64748b; background:#f8fafc; border:1px solid #e2e8f0; padding:3px 10px; border-radius:6px;">
-        DDS Weekly Surveillance
-    </div>
-</div>
-""")
+    """)
+with top_c2:
+    if st.button("ระเบียบวิธี / เกณฑ์ P75", use_container_width=True):
+        show_methodology_modal()
 
 # =========================================================
 # 4. แถบควบคุมด้านซ้าย (Left Navigation Rail)
@@ -1184,6 +1221,38 @@ with tab1:
             </div>
             """)
 
+        # กล่องสร้างข้อความสรุปสถานการณ์อัตโนมัติ (กดปุ่มมุมขวาบนเพื่อ Copy ส่ง LINE ได้ทันที)
+        with st.container(border=True):
+            render_html("""
+            <div class="card-hdr-row" style="margin-bottom:4px; padding-bottom:6px;">
+                <div>
+                    <div class="card-title" style="font-size:14px;">ข้อความสรุปสถานการณ์สำหรับส่งรายงาน</div>
+                    <div class="card-subtitle">กดไอคอนมุมขวาบนของกล่องเพื่อคัดลอกส่งเข้ากลุ่ม LINE ได้ทันที</div>
+                </div>
+            </div>
+            """)
+            if flagged_items:
+                alert_lines = []
+                for idx_b, it_b in enumerate(flagged_items[:5], start=1):
+                    fc_b, th_b = to_int(it_b["forecast"]), to_int(it_b["threshold"])
+                    alert_lines.append(
+                        f"{idx_b}. จ.{it_b['province_name']} - {it_b['disease_name']}: คาด {fc_b:,} ราย (เกณฑ์ {th_b:,} ราย, +{fc_b - th_b:,})"
+                    )
+                more_note = f"\n...และอีก {len(flagged_items) - 5} รายการ" if len(flagged_items) > 5 else ""
+                briefing_text = (
+                    f"[รายงานเฝ้าระวัง DDS สัปดาห์เป้าหมาย {meta['target_week']}]\n"
+                    f"พื้นที่: {area_title} | ตัดข้อมูลถึง: {meta['cutoff_date']}\n"
+                    f"พบสัญญาณเกินเกณฑ์เตือน (P75) จำนวน {len(flagged_items)} รายการ:\n"
+                    + "\n".join(alert_lines) + more_note
+                )
+            else:
+                briefing_text = (
+                    f"[รายงานเฝ้าระวัง DDS สัปดาห์เป้าหมาย {meta['target_week']}]\n"
+                    f"พื้นที่: {area_title} | ตัดข้อมูลถึง: {meta['cutoff_date']}\n"
+                    f"สถานการณ์ปกติ: ยอดคาดการณ์ของ{disease_scope_text}ต่ำกว่าเกณฑ์เตือน (P75) ทุกรายการ"
+                )
+            st.code(briefing_text, language=None)
+
     render_html("""
     <div class="section-bar">
         <div class="section-bar-line"></div>
@@ -1325,9 +1394,9 @@ with tab2:
         render_html("""
         <div class="chart-footer-note">
             <b>วิธีอ่านกราฟ (ภาพรวม 1 ปี):</b><br>
-- <b style="color:#2563eb;">เส้นทึบสีน้ำเงิน:</b> ยอดผู้ป่วยจริงรายสัปดาห์ย้อนหลัง 52 สัปดาห์ ใช้ดูรอบฤดูกาลของโรค<br>
-- <b style="color:#d97706;">เส้นประสีเหลือง:</b> เกณฑ์เตือนปกติ (P75) หากยอดผู้ป่วยสูงเกินเส้นนี้ถือว่าสูงกว่าเกณฑ์ปกติของพื้นที่<br>
-- <b style="color:#be123c;">รูปดาวสีแดง (ขวาสุด):</b> ยอดคาดการณ์สัปดาห์หน้า หากดาวลอยอยู่เหนือเส้นประสีเหลือง แสดงว่าสัปดาห์หน้ามีแนวโน้มเกินเกณฑ์เตือน <i>(หมายเหตุ: แถบพื้นหลังสีเหลืองอ่อนช่วง 1–2 สัปดาห์ล่าสุด คือข้อมูลเบื้องต้นที่หน่วยบริการยังทยอยบันทึกเข้าระบบ)</i>
+            • <b style="color:#2563eb;">เส้นทึบสีน้ำเงิน:</b> ยอดผู้ป่วยจริงรายสัปดาห์ย้อนหลัง 52 สัปดาห์ ใช้ดูรอบฤดูกาลของโรค<br>
+            • <b style="color:#d97706;">เส้นประสีเหลือง:</b> เกณฑ์เตือนปกติ (P75) หากยอดผู้ป่วยสูงเกินเส้นนี้ถือว่าสูงกว่าเกณฑ์ปกติของพื้นที่<br>
+            • <b style="color:#be123c;">รูปดาวสีแดง (ขวาสุด):</b> ยอดคาดการณ์สัปดาห์หน้า หากดาวลอยอยู่เหนือเส้นประสีเหลือง แสดงว่าสัปดาห์หน้ามีแนวโน้มเกินเกณฑ์เตือน <i>(หมายเหตุ: แถบพื้นหลังสีเหลืองอ่อนช่วง 1–2 สัปดาห์ล่าสุด คือข้อมูลเบื้องต้นที่หน่วยบริการยังทยอยบันทึกเข้าระบบ)</i>
         </div>
         """)
 
@@ -1402,8 +1471,8 @@ with tab2:
         render_html("""
         <div class="chart-footer-note">
             <b>วิธีอ่านกราฟ (ซูมระยะสั้น 3 เดือนล่าสุด):</b><br>
-- <b style="color:#2563eb;">ตัวเลขบนจุดสีน้ำเงิน:</b> จำนวนผู้ป่วยจริงในแต่ละสัปดาห์ช่วง 12 สัปดาห์ล่าสุด<br>
-- <b style="color:#be123c;">เส้นประสีแดงและรูปดาว:</b> แสดงทิศทางและความชันจากสัปดาห์ล่าสุดไปยังสัปดาห์เป้าหมาย เพื่อประเมินว่าสถานการณ์กำลัง <b style="color:#be123c;">ไต่ระดับเพิ่มขึ้น</b> <b style="color:#be123c;">ทรงตัว</b> หรือ <b style="color:#be123c;">เริ่มลดลง</b> เมื่อเทียบกับเส้นเกณฑ์เตือนสีเหลือง
+            • <b style="color:#2563eb;">ตัวเลขบนจุดสีน้ำเงิน:</b> จำนวนผู้ป่วยจริงในแต่ละสัปดาห์ช่วง 12 สัปดาห์ล่าสุด<br>
+            • <b style="color:#be123c;">เส้นประสีแดงและรูปดาว:</b> แสดงทิศทางและความชันจากสัปดาห์ล่าสุดไปยังสัปดาห์เป้าหมาย เพื่อประเมินว่าสถานการณ์กำลัง <b style="color:#be123c;">ไต่ระดับเพิ่มขึ้น</b> <b style="color:#be123c;">ทรงตัว</b> หรือ <b style="color:#be123c;">เริ่มลดลง</b> เมื่อเทียบกับเส้นเกณฑ์เตือนสีเหลือง
         </div>
         """)
 
