@@ -800,7 +800,115 @@ def update_registry(run_id, prov_code, disease_code, target_week, check_time, fi
             check_time, field_res, action_txt, actual_val
         ]
         df_all.to_csv(CSV_REGISTRY, index=False, encoding="utf-8-sig")
+def split_check_datetime(dt_str):
+    """แยกค่า YYYY-MM-DD HH:MM จากฐานข้อมูลออกเป็น (วว/ดด/ปปปป, HH:MM) เพื่อแสดงใน 2 กล่อง"""
+    s = clean_str(dt_str)
+    if not s:
+        return "", ""
+    ts = pd.to_datetime(s, errors="coerce")
+    if pd.notna(ts):
+        return ts.strftime("%d/%m/%Y"), ts.strftime("%H:%M")
+    parts = s.split()
+    return (parts[0], parts[1] if len(parts) > 1 else "")
 
+
+def parse_check_datetime(date_txt, time_txt):
+    """แปลงวันที่ (วว/ดด/ปปปป รองรับทั้ง พ.ศ. และ ค.ศ.) + เวลา (HH:MM) เป็นมาตรฐาน YYYY-MM-DD HH:MM"""
+    now_th = pd.Timestamp.now(tz="Asia/Bangkok")
+    d_raw = str(date_txt).strip()
+    t_raw = str(time_txt).strip()
+
+    # หากเว้นว่างทั้งคู่ ให้ตั้งค่าวันและเวลาปัจจุบันให้อัตโนมัติ
+    if d_raw == "" and t_raw == "":
+        return now_th.strftime("%Y-%m-%d %H:%M")
+
+    # จัดการส่วนวันที่ (หากกรอกเฉพาะเวลา ให้ใช้วันที่ปัจจุบัน)
+    if d_raw == "":
+        y, m, d = now_th.year, now_th.month, now_th.day
+    else:
+        m_dmy = re.match(r"^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$", d_raw)
+        m_ymd = re.match(r"^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$", d_raw)
+        if m_dmy:
+            d, m, y = int(m_dmy.group(1)), int(m_dmy.group(2)), int(m_dmy.group(3))
+        elif m_ymd:
+            y, m, d = int(m_ymd.group(1)), int(m_ymd.group(2)), int(m_ymd.group(3))
+        else:
+            raise ValueError("รูปแบบวันที่ไม่ถูกต้อง กรุณากรอกเป็น วว/ดด/ปปปป (เช่น 24/11/2569)")
+        if y >= 2400:
+            y -= 543
+        pd.Timestamp(year=y, month=m, day=d)  # ตรวจสอบความถูกต้องของปฏิทิน
+
+    # จัดการส่วนเวลา (หากกรอกเฉพาะวันที่ ให้ใช้เวลาปัจจุบัน)
+    if t_raw == "":
+        hh, mm = now_th.hour, now_th.minute
+    else:
+        t_clean = t_raw.replace(".", ":")
+        if re.match(r"^\d{4}$", t_clean):
+            t_clean = f"{t_clean[:2]}:{t_clean[2:]}"
+        m_tm = re.match(r"^(\d{1,2}):(\d{2})$", t_clean)
+        if not m_tm:
+            raise ValueError("รูปแบบเวลาไม่ถูกต้อง กรุณากรอกเป็นตัวเลข เช่น 11:30")
+        hh, mm = int(m_tm.group(1)), int(m_tm.group(2))
+        if not (0 <= hh <= 23 and 0 <= mm <= 59):
+            raise ValueError("เวลาต้องอยู่ระหว่าง 00:00 ถึง 23:59")
+
+    return f"{y:04d}-{m:02d}-{d:02d} {hh:02d}:{mm:02d}"
+
+
+def auto_settle_from_weekly(weekly_df):
+    """ดึงยอดผู้ป่วยจริงที่นิ่งแล้ว (สถานะ 'ครบถ้วน') มาปิดยอดในทะเบียนติดตามผลให้อัตโนมัติ"""
+    if weekly_df is None or weekly_df.empty:
+        return 0
+
+    w_copy = weekly_df.copy()
+    w_copy["week_str"] = pd.to_datetime(w_copy["week_start"]).dt.strftime("%Y-%m-%d")
+    w_copy["province_code"] = w_copy["province_code"].astype(str).str.strip()
+    w_copy["disease_code"] = w_copy["disease_code"].apply(normalize_dcode)
+
+    settled_w = w_copy[w_copy["data_status"] == "ครบถ้วน"]
+    settled_map = {
+        (r["province_code"], r["disease_code"], r["week_str"]): int(round(float(r["cases"])))
+        for _, r in settled_w.iterrows()
+    }
+    if not settled_map:
+        return 0
+
+    engine = get_db_engine()
+    updated_cnt = 0
+    if engine:
+        ensure_table(engine)
+        df_open = pd.read_sql(
+            "SELECT run_id, province_code, disease_code, target_week FROM tracking_registry WHERE settled_actual_cases IS NULL",
+            engine
+        )
+        with engine.begin() as conn:
+            for _, r in df_open.iterrows():
+                key = (str(r["province_code"]).strip(), normalize_dcode(r["disease_code"]), str(r["target_week"]).strip())
+                if key in settled_map:
+                    conn.execute(text("""
+                        UPDATE tracking_registry
+                        SET settled_actual_cases = :ac
+                        WHERE run_id = :rid AND province_code = :pc AND disease_code = :dc AND target_week = :tw;
+                    """), {
+                        "ac": settled_map[key],
+                        "rid": r["run_id"],
+                        "pc": str(r["province_code"]).strip(),
+                        "dc": normalize_dcode(r["disease_code"]),
+                        "tw": str(r["target_week"]).strip()
+                    })
+                    updated_cnt += 1
+    elif os.path.exists(CSV_REGISTRY):
+        df_all = pd.read_csv(CSV_REGISTRY, dtype={"province_code": str, "disease_code": str})
+        for idx, r in df_all.iterrows():
+            if pd.isna(r["settled_actual_cases"]) or str(r["settled_actual_cases"]).strip() == "":
+                key = (str(r["province_code"]).strip(), normalize_dcode(r["disease_code"]), str(r["target_week"]).strip())
+                if key in settled_map:
+                    df_all.at[idx, "settled_actual_cases"] = settled_map[key]
+                    updated_cnt += 1
+        if updated_cnt > 0:
+            df_all.to_csv(CSV_REGISTRY, index=False, encoding="utf-8-sig")
+
+    return updated_cnt
 
 # =========================================================
 # 2. ระบบนำเข้าและคลีนข้อมูลดิบ DDS แบบ Real-Time (Strict 8 Columns PDPA)
