@@ -1294,7 +1294,7 @@ with tab1:
                 <th class="ctr">อันดับ</th>{prov_th}<th>กลุ่มโรคเฝ้าระวัง</th>
                 <th class="num">ยอดล่าสุด</th><th class="num">คาดสัปดาห์หน้า</th>
                 <th class="num">เกณฑ์เตือน (P75)</th>
-                <th class="num">ส่วนต่างจากเกณฑ์ (ราย)<br><span style="font-weight:400; font-size:11px; color:#64748b;">(คาดสัปดาห์หน้า − เกณฑ์ P75)</span></th>
+                <th class="num"> จำนวนผู้ป่วยที่คาดว่าจะ "เกินเกณฑ์เตือน" (ราย)<br><span style="font-weight:400; font-size:11px; color:#64748b;">(คาดสัปดาห์หน้า − เกณฑ์ P75)</span></th>
                 <th class="ctr">สถานะ</th>
             </tr>
         </thead>
