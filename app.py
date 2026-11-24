@@ -1253,55 +1253,7 @@ with tab1:
                 )
             st.code(briefing_text, language=None)
 
-    render_html("""
-    <div class="section-bar">
-        <div class="section-bar-line"></div>
-        <div class="section-bar-text">ตารางสรุปตัวเลขทั้งหมด (เรียงลำดับความเสี่ยงจากมากไปน้อย)</div>
-    </div>
-    """)
-
-    rows_html = []
-    for rank_idx, d in enumerate(view_items, start=1):
-        fc_i, th_i, lt_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"])
-        diff = fc_i - th_i
-        badge = '<span class="badge-red">เฝ้าระวัง</span>' if d["is_flagged"] else '<span class="badge-ok">ปกติ</span>'
-        diff_txt = (
-            f'<span style="color:#be123c; font-weight:700;">+{diff:,}</span>'
-            if d["is_flagged"]
-            else f'<span class="muted">{diff:,}</span>'
-        )
-
-        pt = get_prov_theme(d["province_code"])
-        prov_td = f'<td><span class="prov-pill" style="background:{pt["bg"]}; color:{pt["color"]};">จ.{d["province_name"]}</span></td>' if is_all_prov else ""
-
-        rows_html.append(f"""
-        <tr>
-            <td class="ctr"><b>{rank_idx}</b></td>
-            {prov_td}
-            <td><b>{d['disease_name']}</b> <span class="muted">({d['disease_code']})</span></td>
-            <td class="num">{lt_i:,}</td>
-            <td class="num"><b>{fc_i:,}</b></td>
-            <td class="num">{th_i:,}</td>
-            <td class="num">{diff_txt}</td>
-            <td class="ctr">{badge}</td>
-        </tr>
-        """)
-    prov_th = "<th>จังหวัด</th>" if is_all_prov else ""
-    render_html(f"""
-    <div class="table-card"><table class="data-grid">
-        <thead>
-            <tr>
-                <th class="ctr">อันดับ</th>{prov_th}<th>กลุ่มโรคเฝ้าระวัง</th>
-                <th class="num">ยอดล่าสุด</th><th class="num">คาดสัปดาห์หน้า</th>
-                <th class="num">เกณฑ์เตือน (P75)</th>
-                <th class="num"> จำนวนผู้ป่วยที่คาดว่าจะ 'เกินเกณฑ์เตือน' (ราย)<br><span style="font-weight:400; font-size:11px; color:#64748b;">(คาดสัปดาห์หน้า − เกณฑ์ P75)</span></th>
-                <th class="ctr">สถานะ</th>
-            </tr>
-        </thead>
-        <tbody>{"".join(rows_html)}</tbody>
-    </table></div>
-    """)
-
+   
 # =========================================================
 # แท็บ 2: กราฟแนวโน้มรายโรค (Unified Card Architecture)
 # =========================================================
