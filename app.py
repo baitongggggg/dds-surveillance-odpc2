@@ -380,31 +380,32 @@ header[data-testid="stHeader"] {
 .alert-box {
     background: var(--surface);
     border: 1px solid #fecaca;
-    border-radius: 14px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(220, 38, 38, 0.05);
-    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(220, 38, 38, 0.04);
+    margin-bottom: 12px;
 }
 .alert-box-hdr {
     background: #fef2f2;
     border-bottom: 1px solid #fecaca;
-    padding: 14px 20px;
+    padding: 10px 15px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 14.5px;
+    gap: 7px;
+    font-size: 13.5px;
     font-weight: 700;
     color: #991b1b;
 }
-.alert-item { padding: 14px 20px; border-bottom: 1px solid #f1f5f9; }
+.alert-item { padding: 10px 15px; border-bottom: 1px solid #f1f5f9; }
 .alert-item:last-child { border-bottom: none; }
 .alert-item:first-of-type { background: #fffcfc; }
-.alert-item-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
-.alert-item-title { font-size: 14.5px; font-weight: 700; color: var(--text-main); }
-.r-tag-1 { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 6px; }
-.r-tag-2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 6px; }
-.r-tag-3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 6px; }
-.alert-ul { margin: 0; padding-left: 18px; color: var(--text-sub); font-size: 13px; line-height: 1.65; }
+.alert-item-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
+.alert-item-title { font-size: 13.5px; font-weight: 700; color: var(--text-main); }
+.r-tag-1 { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 5px; white-space: nowrap; }
+.r-tag-2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 5px; white-space: nowrap; }
+.r-tag-3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 5px; white-space: nowrap; }
+.alert-meta-line { font-size: 12px; color: var(--text-sub); line-height: 1.5; }
+.alert-ci-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
 
 .safe-box {
     background: var(--surface);
