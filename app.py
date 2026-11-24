@@ -1114,12 +1114,6 @@ with st.sidebar:
         <div class="pdpa-pill">
             <b>PDPA Safe 100%:</b> ระบบอ่านเฉพาะ 8 คอลัมน์ที่จำเป็นใน RAM และทำลายรหัส <code>viewcode</code> ทันทีเมื่อรวมยอด ไม่เก็บข้อมูลส่วนบุคคล
         </div>
-        """)
-    with st.expander("อัปเดตข้อมูลดิบ DDS (Real-time)", expanded=False):
-        render_html("""
-        <div class="pdpa-pill">
-            <b>PDPA Safe 100%:</b> ระบบอ่านเฉพาะ 8 คอลัมน์ที่จำเป็นใน RAM และทำลายรหัส <code>viewcode</code> ทันทีเมื่อรวมยอด ไม่เก็บข้อมูลส่วนบุคคล
-        </div>
         <div style="background:#fffbeb; border:1px solid #fde68a; color:#92400e; font-size:11px; padding:7px 10px; border-radius:10px; margin-bottom:8px; line-height:1.5;">
             * <b>ข้อเสนอแนะ :</b> อัปโหลดทีละ <b>2–3 เดือน (ต่อช่วง)</b> / อัพไฟล์ <code>.csv</code> จะใช้ RAM น้อยกว่า <code>.xlsx</code> เพื่อให้ใช้งานได้อย่างต่อเนื่อง
         </div>
