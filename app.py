@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import warnings
 import numpy as np
@@ -64,6 +65,14 @@ def normalize_dcode(val):
     return s
 
 
+def normalize_pcode(val):
+    s = str(val).strip()
+    if s.endswith(".0"):
+        s = s[:-2]
+    digits = "".join(ch for ch in s if ch.isdigit())
+    return digits.zfill(2) if digits else ""
+
+
 def calc_threshold(series):
     valid = series.dropna()
     if len(valid) == 0:
@@ -88,6 +97,18 @@ def clean_str(val):
     return "" if pd.isna(val) or str(val).strip().lower() == "nan" else str(val).strip()
 
 
+# รายชื่อ 8 คอลัมน์ที่อนุญาตให้นำเข้าตามมาตรฐาน PDPA (Whitelist)
+ALLOWED_DDS_COLUMNS = [
+    "viewcode",
+    "รหัสจังหวัดขณะป่วย",
+    "จังหวัดขณะป่วย",
+    "epidem_report_group_code",
+    "epidem_report_group_name",
+    "วันที่เริ่มมีอาการ",
+    "วันที่เริ่มรักษา",
+    "วันที่วินิจฉัยโรค",
+]
+
 DEFAULT_DISEASE_NAMES = {
     "02": "โรคอุจจาระร่วงเฉียบพลัน",
     "15": "โรคไข้หวัดใหญ่",
@@ -101,6 +122,8 @@ ODPC2_PROVINCES = {
     "64": "สุโขทัย",
     "67": "เพชรบูรณ์",
 }
+
+PROV_NAME_TO_CODE = {v: k for k, v in ODPC2_PROVINCES.items()}
 
 PROVINCE_THEME = {
     "65": {"color": "#0369a1", "bg": "#e0f2fe", "border": "#bae6fd"},
@@ -201,7 +224,7 @@ header[data-testid="stHeader"] {
     padding: 15px 16px;
     background: linear-gradient(135deg, #004d28 0%, #059669 100%);
     border-radius: 18px;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
     box-shadow: 0 8px 20px rgba(0, 104, 55, 0.22);
 }
 .sb-brand-icon {
@@ -227,7 +250,19 @@ header[data-testid="stHeader"] {
     border: 1px solid var(--brand-border);
     border-radius: 12px;
     padding: 6px 12px;
-    margin: 16px 0 8px 0;
+    margin: 14px 0 8px 0;
+}
+
+.pdpa-pill {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    line-height: 1.45;
 }
 
 [data-testid="stSidebar"] .stCheckbox {
@@ -324,17 +359,8 @@ header[data-testid="stHeader"] {
     background: #34d399;
     box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.25);
 }
-.exec-org-title {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #ffffff;
-}
-.exec-org-dept {
-    font-size: 12px;
-    color: #a7f3d0;
-    border-left: 1px solid rgba(255, 255, 255, 0.25);
-    padding-left: 10px;
-}
+.exec-org-title { font-size: 13.5px; font-weight: 700; color: #ffffff; }
+.exec-org-dept { font-size: 12px; color: #a7f3d0; border-left: 1px solid rgba(255, 255, 255, 0.25); padding-left: 10px; }
 .exec-sys-tag {
     font-size: 11.5px;
     font-weight: 600;
@@ -344,19 +370,8 @@ header[data-testid="stHeader"] {
     padding: 3px 11px;
     border-radius: 999px;
 }
-.exec-main-title {
-    font-size: 21px;
-    font-weight: 700;
-    color: #ffffff;
-    margin: 0 0 14px 0;
-    line-height: 1.35;
-}
-.exec-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-}
+.exec-main-title { font-size: 21px; font-weight: 700; color: #ffffff; margin: 0 0 14px 0; line-height: 1.35; }
+.exec-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .echip-gold {
     background: #fbbf24;
     color: #1e293b;
@@ -402,12 +417,7 @@ header[data-testid="stHeader"] {
     position: relative;
     overflow: hidden;
 }
-.kpi-tile::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 5px;
-}
+.kpi-tile::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; }
 .kpi-rose::before { background: linear-gradient(180deg, #e11d48 0%, #fb7185 100%); }
 .kpi-amber::before { background: linear-gradient(180deg, #d97706 0%, #fbbf24 100%); }
 .kpi-emerald::before { background: linear-gradient(180deg, #006837 0%, #10b981 100%); }
@@ -458,34 +468,12 @@ header[data-testid="stHeader"] {
     align-items: center;
     gap: 8px;
 }
-.prov-mini-alert {
-    background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%);
-    border-color: #fecdd3;
-}
-.prov-mini-ok {
-    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
-    border-color: #bbf7d0;
-}
+.prov-mini-alert { background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%); border-color: #fecdd3; }
+.prov-mini-ok { background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%); border-color: #bbf7d0; }
 .prov-mini-name { font-size: 13.5px; font-weight: 700; color: var(--text-main); }
 .prov-mini-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
-.pbadge-alert {
-    background: #be123c;
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 999px;
-    white-space: nowrap;
-}
-.pbadge-ok {
-    background: #047857;
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 999px;
-    white-space: nowrap;
-}
+.pbadge-alert { background: #be123c; color: #ffffff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pbadge-ok { background: #047857; color: #ffffff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
 
 /* ================= CONTAINERS & DATAFRAME ================= */
 [data-testid="stVerticalBlockBorderWrapper"] {
@@ -505,25 +493,11 @@ header[data-testid="stHeader"] {
     box-shadow: var(--shadow-card) !important;
 }
 
-.card-hdr {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 6px;
-}
+.card-hdr { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
 .card-h3 { font-size: 15.5px; font-weight: 700; color: var(--text-main); margin: 0; }
 .card-desc { font-size: 12.5px; color: var(--text-muted); margin: 3px 0 0 0; }
 
-.prov-tag {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-}
+.prov-tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 
 /* ================= PRIORITY ALERT PANEL ================= */
 .alert-box {
@@ -568,12 +542,7 @@ header[data-testid="stHeader"] {
     margin-bottom: 14px;
 }
 
-.sec-hdr {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 20px 0 12px 0;
-}
+.sec-hdr { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px 0; }
 .sec-bar { width: 5px; height: 20px; background: linear-gradient(180deg, #006837 0%, #10b981 100%); border-radius: 999px; }
 .sec-txt { font-size: 15.5px; font-weight: 700; color: var(--text-main); }
 
@@ -610,10 +579,7 @@ header[data-testid="stHeader"] {
     padding: 5px !important;
     box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04) !important;
 }
-[data-testid="stSegmentedControl"] button {
-    border-radius: 999px !important;
-    font-weight: 600 !important;
-}
+[data-testid="stSegmentedControl"] button { border-radius: 999px !important; font-weight: 600 !important; }
 [data-testid="stSegmentedControl"] button[aria-checked="true"],
 [data-testid="stSegmentedControl"] button[aria-pressed="true"] {
     background-color: var(--brand) !important;
@@ -656,8 +622,9 @@ header[data-testid="stHeader"] {
 @st.dialog("ระเบียบวิธีและเกณฑ์ทางระบาดวิทยา (Methodology)")
 def show_methodology_modal():
     st.markdown("""
-    **1. แหล่งข้อมูลและขอบเขตการเฝ้าระวัง**
-    * ใช้ข้อมูลรายงานผู้ป่วยรายสัปดาห์จากระบบเฝ้าระวังโรคดิจิทัล (**DDS**) ครอบคลุมพื้นที่ **5 จังหวัดเขตสุขภาพที่ 2** (พิษณุโลก, อุตรดิตถ์, ตาก, สุโขทัย, เพชรบูรณ์) โดยผ่านกระบวนการตัดข้อมูลส่วนบุคคล (De-identification) ตามมาตรฐาน PDPA เรียบร้อยแล้ว
+    **1. การคุ้มครองข้อมูลส่วนบุคคล 100% (PDPA Whitelist)**
+    * เมื่อนำเข้าไฟล์ข้อมูลดิบจากระบบ **DDS** ระบบจะประมวลผลในหน่วยความจำชั่วคราว (RAM) และอ่านเข้าโปรแกรม **เฉพาะ 8 คอลัมน์ที่จำเป็น** ได้แก่ `viewcode`, `รหัสจังหวัดขณะป่วย`, `จังหวัดขณะป่วย`, `epidem_report_group_code`, `epidem_report_group_name`, `วันที่เริ่มมีอาการ`, `วันที่เริ่มรักษา` และ `วันที่วินิจฉัยโรค`
+    * ข้อมูลส่วนบุคคลอื่น ๆ จะไม่ถูกโหลดเข้าสู่ระบบ และรหัส `viewcode` จะถูกทำลายทิ้งทันทีเมื่อรวมยอดรายสัปดาห์แล้ว
 
     **2. เกณฑ์เตือนปกติ (Alert Threshold — P75)**
     * คำนวณแยกตามรายจังหวัดและรายโรค จากค่า **เปอร์เซ็นไทล์ที่ 75 (P75)** ของจำนวนผู้ป่วยรายสัปดาห์ย้อนหลังสูงสุด 104 สัปดาห์ (2 ปี)
@@ -672,7 +639,7 @@ def show_methodology_modal():
 
 
 # =========================================================
-# 1. ระบบจัดเก็บทะเบียนติดตามผล (PostgreSQL / CSV)
+# 1. ระบบฐานข้อมูล PostgreSQL / CSV (ทะเบียนติดตามผล & ยอดรวมรายสัปดาห์)
 # =========================================================
 @st.cache_resource
 def get_db_engine():
@@ -700,6 +667,51 @@ def ensure_table(engine):
                 PRIMARY KEY (run_id, province_code, disease_code, target_week)
             );
         """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS weekly_surveillance_agg (
+                province_code TEXT, province_name TEXT,
+                disease_code TEXT, disease_name TEXT,
+                week_start TEXT, cases INTEGER, data_status TEXT,
+                PRIMARY KEY (province_code, disease_code, week_start)
+            );
+        """))
+
+
+def save_weekly_agg_store(df_weekly):
+    """บันทึกเฉพาะยอดสรุปรวมระดับจังหวัด-โรค-สัปดาห์ (ไม่มีข้อมูลส่วนบุคคล 100%)"""
+    out_df = df_weekly.copy()
+    out_df["week_start"] = pd.to_datetime(out_df["week_start"]).dt.strftime("%Y-%m-%d")
+    out_df["cases"] = pd.to_numeric(out_df["cases"], errors="coerce").fillna(0).astype(int)
+
+    engine = get_db_engine()
+    if engine:
+        ensure_table(engine)
+        with engine.begin() as conn:
+            conn.execute(text("DELETE FROM weekly_surveillance_agg;"))
+            out_df[["province_code", "province_name", "disease_code", "disease_name", "week_start", "cases", "data_status"]].to_sql(
+                "weekly_surveillance_agg", conn, if_exists="append", index=False
+            )
+    try:
+        out_df.to_csv(WEEKLY_FILE, index=False, encoding="utf-8-sig")
+    except Exception:
+        pass
+
+
+def load_weekly_agg_from_db():
+    engine = get_db_engine()
+    if not engine:
+        return None
+    try:
+        ensure_table(engine)
+        df_db = pd.read_sql("SELECT * FROM weekly_surveillance_agg", engine)
+        if not df_db.empty:
+            df_db["week_start"] = pd.to_datetime(df_db["week_start"])
+            df_db["province_code"] = df_db["province_code"].astype(str).str.strip()
+            df_db["disease_code"] = df_db["disease_code"].apply(normalize_dcode)
+            return df_db
+    except Exception:
+        return None
+    return None
 
 
 def sync_to_registry(payload):
@@ -787,18 +799,218 @@ def update_registry(run_id, prov_code, disease_code, target_week, check_time, fi
 
 
 # =========================================================
-# 2. โหลดข้อมูลและคำนวณพยากรณ์ (รองรับทุกโรคอัตโนมัติ)
+# 2. ระบบนำเข้าและคลีนข้อมูลดิบ DDS แบบ Real-Time (Strict 8 Columns PDPA)
 # =========================================================
-@st.cache_data
+def parse_thai_date_series(series):
+    """แปลงวันที่ทั้งรูปแบบ ค.ศ. และ พ.ศ. (เช่น 2568-11-20 หรือ 20/11/2568) เป็น datetime"""
+    if pd.api.types.is_datetime64_any_dtype(series):
+        s_dt = pd.to_datetime(series, errors="coerce")
+        mask_be = s_dt.dt.year >= 2400
+        if mask_be.any():
+            s_dt.loc[mask_be] = s_dt.loc[mask_be] - pd.DateOffset(years=543)
+        return s_dt
+
+    s_str = series.astype(str).str.strip()
+    s_str = s_str.replace({"": np.nan, "nan": np.nan, "None": np.nan, "NaT": np.nan, "0000-00-00": np.nan})
+
+    def _conv_be_str(val):
+        if pd.isna(val):
+            return val
+        txt = str(val).strip()
+        # แปลงปี พ.ศ. 24xx - 26xx ให้เป็น ค.ศ. ก่อนแปลงเป็น datetime เพื่อป้องกันปัญหาปีอธิกสุรทิน
+        m_iso = re.match(r"^(2[4-6]\d{2})([-/]\d{1,2}[-/]\d{1,2}.*)$", txt)
+        if m_iso:
+            return f"{int(m_iso.group(1)) - 543}{m_iso.group(2)}"
+        m_dmy = re.match(r"^(\d{1,2}[-/]\d{1,2}[-/])(2[4-6]\d{2})(.*)$", txt)
+        if m_dmy:
+            return f"{m_dmy.group(1)}{int(m_dmy.group(2)) - 543}{m_dmy.group(3)}"
+        return txt
+
+    s_ce = s_str.map(_conv_be_str)
+    parsed = pd.to_datetime(s_ce, errors="coerce", dayfirst=True)
+    mask_be2 = parsed.dt.year >= 2400
+    if mask_be2.any():
+        parsed.loc[mask_be2] = parsed.loc[mask_be2] - pd.DateOffset(years=543)
+    return parsed
+
+
+def process_raw_dds_upload(uploaded_files, base_weekly_df=None):
+    """
+    อ่านเฉพาะ 8 คอลัมน์ที่อนุญาตในหน่วยความจำ -> คลีนข้อมูล -> รวมยอดรายสัปดาห์ -> ทำลาย viewcode ทันที
+    """
+    allowed_set = set(ALLOWED_DDS_COLUMNS)
+    raw_frames = []
+
+    for uf in uploaded_files:
+        fname_low = uf.name.lower()
+        if fname_low.endswith(".csv"):
+            df_part = None
+            for enc in ["utf-8-sig", "utf-8", "cp874", "tis-620"]:
+                try:
+                    uf.seek(0)
+                    df_part = pd.read_csv(
+                        uf,
+                        encoding=enc,
+                        usecols=lambda c: str(c).strip() in allowed_set,
+                        dtype=str
+                    )
+                    break
+                except Exception:
+                    continue
+            if df_part is not None and not df_part.empty:
+                df_part.columns = [str(c).strip() for c in df_part.columns]
+                raw_frames.append(df_part)
+        else:
+            uf.seek(0)
+            sheets_dict = pd.read_excel(
+                uf,
+                sheet_name=None,
+                usecols=lambda c: str(c).strip() in allowed_set,
+                dtype=str
+            )
+            for _, df_sh in sheets_dict.items():
+                if df_sh is not None and not df_sh.empty:
+                    df_sh.columns = [str(c).strip() for c in df_sh.columns]
+                    raw_frames.append(df_sh)
+
+    if not raw_frames:
+        raise ValueError("ไม่พบคอลัมน์มาตรฐาน DDS ในไฟล์ที่อัปโหลด (กรุณาตรวจสอบว่ามีคอลัมน์ epidem_report_group_code และวันที่เริ่มมีอาการ)")
+
+    df_raw = pd.concat(raw_frames, ignore_index=True)
+    # บังคับโครงสร้างให้เหลือเฉพาะ 8 คอลัมน์ที่อนุญาต 100%
+    df_raw = df_raw.reindex(columns=ALLOWED_DDS_COLUMNS)
+    total_rows_read = len(df_raw)
+
+    # 1. ตัดรายการซ้ำด้วย viewcode (ถ้ามี)
+    vc = df_raw["viewcode"].fillna("").astype(str).str.strip()
+    has_vc = vc != ""
+    if has_vc.any():
+        df_with_vc = df_raw[has_vc].drop_duplicates(subset=["viewcode"], keep="first")
+        df_no_vc = df_raw[~has_vc]
+        df_clean = pd.concat([df_with_vc, df_no_vc], ignore_index=True)
+    else:
+        df_clean = df_raw.copy()
+
+    # 2. จัดมาตรฐานรหัสจังหวัดและกรองเฉพาะ 5 จังหวัด เขตสุขภาพที่ 2
+    df_clean["province_code"] = df_clean["รหัสจังหวัดขณะป่วย"].apply(normalize_pcode)
+    prov_txt = df_clean["จังหวัดขณะป่วย"].fillna("").astype(str).str.replace("จังหวัด", "", regex=False).str.replace("จ.", "", regex=False).str.strip()
+    missing_pcode = df_clean["province_code"] == ""
+    df_clean.loc[missing_pcode, "province_code"] = prov_txt[missing_pcode].map(PROV_NAME_TO_CODE).fillna("")
+
+    df_clean = df_clean[df_clean["province_code"].isin(ODPC2_PROVINCES.keys())].copy()
+    df_clean["province_name"] = df_clean["province_code"].map(ODPC2_PROVINCES)
+
+    # 3. จัดมาตรฐานรหัสกลุ่มโรคเฝ้าระวัง
+    df_clean["disease_code"] = df_clean["epidem_report_group_code"].apply(normalize_dcode)
+    df_clean = df_clean[df_clean["disease_code"] != ""].copy()
+
+    dname_raw = df_clean["epidem_report_group_name"].fillna("").astype(str).str.strip()
+    df_clean["disease_name"] = np.where(
+        (dname_raw != "") & (dname_raw.str.lower() != "nan"),
+        dname_raw,
+        df_clean["disease_code"].map(DEFAULT_DISEASE_NAMES).fillna("กลุ่มโรค " + df_clean["disease_code"])
+    )
+
+    # 4. จัดการวันที่อ้างอิง (วันที่เริ่มมีอาการ -> วันที่เริ่มรักษา -> วันที่วินิจฉัยโรค)
+    dt_onset = parse_thai_date_series(df_clean["วันที่เริ่มมีอาการ"])
+    dt_treat = parse_thai_date_series(df_clean["วันที่เริ่มรักษา"])
+    dt_diag = parse_thai_date_series(df_clean["วันที่วินิจฉัยโรค"])
+
+    event_dt = dt_onset.fillna(dt_treat).fillna(dt_diag)
+    df_clean["event_dt"] = event_dt
+    df_clean = df_clean[
+        df_clean["event_dt"].notna() &
+        (df_clean["event_dt"] >= pd.Timestamp("2020-01-01")) &
+        (df_clean["event_dt"] <= pd.Timestamp.today() + pd.Timedelta(days=7))
+    ].copy()
+
+    if df_clean.empty:
+        raise ValueError("ไม่พบรายการที่อยู่ในพื้นที่ 5 จังหวัด สคร.2 และมีวันที่ถูกต้อง")
+
+    valid_cases_count = len(df_clean)
+
+    # แปลงเป็นสัปดาห์ทางระบาดวิทยา (วันอาทิตย์ - วันเสาร์)
+    df_clean["week_start"] = df_clean["event_dt"].dt.to_period("W-SAT").dt.start_time
+
+    # 5. ยุบรวมข้อมูลเชิงสถิติ (ทำลาย viewcode ทิ้ง 100% ในขั้นตอนนี้)
+    agg = (
+        df_clean.groupby(["province_code", "province_name", "disease_code", "disease_name", "week_start"], as_index=False)
+        .size()
+        .rename(columns={"size": "cases"})
+    )
+
+    # ลบตัวแปรระดับรายบุคคลออกจากหน่วยความจำทันที
+    del df_raw, df_clean
+
+    # 6. ผสานกับฐานข้อมูลสัปดาห์เดิม (หากมี) และเติมสัปดาห์ที่ไม่มีผู้ป่วยให้ครบ (0 ราย)
+    if base_weekly_df is not None and not base_weekly_df.empty:
+        old_w = base_weekly_df.copy()
+        old_w["week_start"] = pd.to_datetime(old_w["week_start"])
+        old_w["province_code"] = old_w["province_code"].astype(str).str.strip()
+        old_w["disease_code"] = old_w["disease_code"].apply(normalize_dcode)
+        combined = pd.concat([old_w[["province_code", "province_name", "disease_code", "disease_name", "week_start", "cases"]], agg], ignore_index=True)
+        # หากสัปดาห์ใดมีข้อมูลใหม่ให้อัปเดตทับด้วยยอดล่าสุด
+        combined = combined.drop_duplicates(subset=["province_code", "disease_code", "week_start"], keep="last")
+    else:
+        combined = agg
+
+    min_wk = combined["week_start"].min()
+    max_wk = combined["week_start"].max()
+    all_weeks = pd.date_range(min_wk, max_wk, freq="W-SUN")
+
+    pairs = combined[["province_code", "province_name", "disease_code", "disease_name"]].drop_duplicates(
+        subset=["province_code", "disease_code"], keep="last"
+    )
+    grid = pairs.assign(_k=1).merge(pd.DataFrame({"week_start": all_weeks, "_k": 1}), on="_k").drop(columns="_k")
+
+    final_weekly = grid.merge(
+        combined[["province_code", "disease_code", "week_start", "cases"]],
+        on=["province_code", "disease_code", "week_start"],
+        how="left"
+    )
+    final_weekly["cases"] = final_weekly["cases"].fillna(0).astype(int)
+
+    prelim_start = max_wk - pd.Timedelta(weeks=1)
+    final_weekly["data_status"] = np.where(
+        final_weekly["week_start"] >= prelim_start,
+        "เบื้องต้น (รอยอดนิ่ง)",
+        "ครบถ้วน"
+    )
+    final_weekly = final_weekly.sort_values(["province_code", "disease_code", "week_start"]).reset_index(drop=True)
+
+    stats_info = {
+        "rows_read": total_rows_read,
+        "valid_cases": valid_cases_count,
+        "max_week": max_wk.strftime("%Y-%m-%d"),
+        "num_diseases": int(final_weekly["disease_code"].nunique())
+    }
+    return final_weekly, stats_info
+
+
+# =========================================================
+# 3. โหลดข้อมูลและคำนวณพยากรณ์ (รองรับ Real-Time & Static)
+# =========================================================
 def load_files():
-    if not os.path.exists(JSON_FILE) or not os.path.exists(WEEKLY_FILE):
-        files_here = os.listdir(BASE_DIR) if os.path.exists(BASE_DIR) else []
-        st.error(f"ไม่พบไฟล์ dashboard_data.json หรือ weekly_summary.csv (ไฟล์ที่ระบบมองเห็นในโฟลเดอร์คือ: {files_here})")
-        st.stop()
-    with open(JSON_FILE, "r", encoding="utf-8") as f:
-        latest_json = json.load(f)
-    weekly = pd.read_csv(WEEKLY_FILE, dtype={"province_code": str, "disease_code": str})
+    latest_json = None
+    if os.path.exists(JSON_FILE):
+        with open(JSON_FILE, "r", encoding="utf-8") as f:
+            latest_json = json.load(f)
+
+    # ลำดับการดึงข้อมูล: 1. ข้อมูลอัปโหลดสดใน Session -> 2. ฐานข้อมูล PostgreSQL -> 3. ไฟล์ CSV บน GitHub
+    if "live_weekly_df" in st.session_state and st.session_state["live_weekly_df"] is not None:
+        weekly = st.session_state["live_weekly_df"].copy()
+    else:
+        db_weekly = load_weekly_agg_from_db()
+        if db_weekly is not None and not db_weekly.empty:
+            weekly = db_weekly
+        elif os.path.exists(WEEKLY_FILE):
+            weekly = pd.read_csv(WEEKLY_FILE, dtype={"province_code": str, "disease_code": str})
+        else:
+            st.warning("ยังไม่มีข้อมูลตั้งต้น กรุณาอัปโหลดไฟล์ข้อมูลจากระบบ DDS ที่แถบเมนูด้านซ้าย")
+            st.stop()
+
     weekly["week_start"] = pd.to_datetime(weekly["week_start"])
+    weekly["province_code"] = weekly["province_code"].astype(str).str.strip()
     weekly["disease_code"] = weekly["disease_code"].apply(normalize_dcode)
     if "disease_name" not in weekly.columns:
         weekly["disease_name"] = weekly["disease_code"].map(DEFAULT_DISEASE_NAMES).fillna(weekly["disease_code"])
@@ -871,15 +1083,9 @@ def predict_for_date(weekly_df, cutoff_str):
 
 
 # =========================================================
-# 3. โหลดข้อมูลหลัก + แถบควบคุมด้านซ้าย
+# 4. โหลดข้อมูลหลัก + แถบควบคุมด้านซ้าย (พร้อมช่องอัปโหลด DDS สด)
 # =========================================================
 latest_json, weekly_df = load_files()
-
-min_date = pd.to_datetime("2023-11-23").date()
-max_data_dt = weekly_df["week_start"].max().date()
-max_date = max(pd.Timestamp.today().date(), max_data_dt)
-latest_cutoff = pd.to_datetime(latest_json["meta"]["cutoff_date"]).date()
-default_date = min(max(latest_cutoff, min_date), max_date)
 
 with st.sidebar:
     render_html("""
@@ -897,15 +1103,68 @@ with st.sidebar:
     </div>
     """)
 
+    with st.expander("อัปเดตข้อมูลดิบ DDS (Real-time)", expanded=False):
+        render_html("""
+        <div class="pdpa-pill">
+            <b>PDPA Safe 100%:</b> ระบบอ่านเฉพาะ 8 คอลัมน์ที่จำเป็นใน RAM และทำลายรหัส <code>viewcode</code> ทันทีเมื่อรวมยอด ไม่เก็บข้อมูลส่วนบุคคล
+        </div>
+        """)
+        uploaded_dds = st.file_uploader(
+            "วางไฟล์ Excel/CSV จากระบบ DDS",
+            type=["xlsx", "xls", "csv"],
+            accept_multiple_files=True,
+            label_visibility="collapsed"
+        )
+        if uploaded_dds:
+            sig = tuple((f.name, f.size) for f in uploaded_dds)
+            if st.session_state.get("last_dds_sig") != sig:
+                try:
+                    with st.spinner("กำลังคัดกรอง 8 คอลัมน์และคำนวณพยากรณ์สด..."):
+                        new_weekly, up_stats = process_raw_dds_upload(uploaded_dds, base_weekly_df=weekly_df)
+                        save_weekly_agg_store(new_weekly)
+                        st.session_state["live_weekly_df"] = new_weekly
+                        st.session_state["last_dds_sig"] = sig
+                        st.session_state["last_dds_stats"] = up_stats
+                        st.session_state["force_latest_date"] = True
+                        st.cache_data.clear()
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"ไม่สามารถนำเข้าไฟล์ได้: {e}")
+
+        if "last_dds_stats" in st.session_state:
+            st_i = st.session_state["last_dds_stats"]
+            st.success(f"อัปเดตสดแล้ว ({st_i['valid_cases']:,} ราย • สัปดาห์ล่าสุด {st_i['max_week']})")
+
+    min_date = min(pd.to_datetime("2023-11-23").date(), weekly_df["week_start"].min().date())
+    max_data_dt = weekly_df["week_start"].max().date()
+    max_date = max(pd.Timestamp.today().date(), max_data_dt)
+
+    if st.session_state.pop("force_latest_date", False):
+        default_date = max_data_dt
+        st.session_state["sidebar_cutoff_date"] = max_data_dt
+    elif "live_weekly_df" in st.session_state and st.session_state["live_weekly_df"] is not None:
+        default_date = max_data_dt
+    elif latest_json is not None:
+        latest_cutoff = pd.to_datetime(latest_json["meta"]["cutoff_date"]).date()
+        default_date = min(max(latest_cutoff, min_date), max_date)
+    else:
+        default_date = max_data_dt
+
     render_html('<div class="sb-sec-tag">1. ใช้ข้อมูลถึงวันที่ (ทำนายสัปดาห์หน้า)</div>')
     picked_date = st.date_input(
         "วันตัดข้อมูล",
         value=default_date, min_value=min_date, max_value=max_date,
+        key="sidebar_cutoff_date",
         label_visibility="collapsed"
     )
     picked_str = picked_date.strftime("%Y-%m-%d")
 
-    payload = latest_json if picked_str == latest_json["meta"]["cutoff_date"] else predict_for_date(weekly_df, picked_str)
+    use_static_json = (
+        latest_json is not None
+        and "live_weekly_df" not in st.session_state
+        and picked_str == latest_json["meta"]["cutoff_date"]
+    )
+    payload = latest_json if use_static_json else predict_for_date(weekly_df, picked_str)
     sync_to_registry(payload)
 
     render_html('<div class="sb-sec-tag">2. เลือกจังหวัด (สคร.2)</div>')
@@ -969,7 +1228,7 @@ with st.sidebar:
         <div class="sb-guide-hdr">ขั้นตอนการใช้งานระบบ</div>
         <div class="sb-guide-step">
             <div class="sb-step-badge">1</div>
-            <div><b>กำหนดตัวกรอง:</b> เลือกวันตัดข้อมูล จังหวัด และโรคที่ต้องการติดตาม</div>
+            <div><b>อัปเดตหรือกรองข้อมูล:</b> อัปโหลดไฟล์ DDS สด หรือเลือกวันที่และพื้นที่</div>
         </div>
         <div class="sb-guide-step">
             <div class="sb-step-badge">2</div>
@@ -1018,9 +1277,11 @@ else:
     area_title = f"พื้นที่ที่เลือก ({len(selected_provinces_objs)} จังหวัด)"
 
 # =========================================================
-# 4. แบนเนอร์หัวเรื่องผู้บริหาร + แถบสลับหน้า
+# 5. แบนเนอร์หัวเรื่องผู้บริหาร + แถบสลับหน้า
 # =========================================================
 status_chip_cls = "echip-warn" if "เบื้องต้น" in str(meta["data_status"]) else "echip-glass"
+live_badge_txt = "LIVE DDS • PDPA Protected" if "live_weekly_df" in st.session_state else "DDS Weekly Surveillance"
+
 render_html(f"""
 <div class="exec-hero">
     <div class="exec-org-bar">
@@ -1029,7 +1290,7 @@ render_html(f"""
             <span class="exec-org-title">สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก</span>
             <span class="exec-org-dept">กรมควบคุมโรค • กลุ่มระบาดวิทยาและตอบโต้ภาวะฉุกเฉินทางสาธารณสุข</span>
         </div>
-        <span class="exec-sys-tag">DDS Weekly Surveillance</span>
+        <span class="exec-sys-tag">{live_badge_txt}</span>
     </div>
     <div class="exec-main-title">ระบบชี้เป้าโรคที่ควรเฝ้าระวังสัปดาห์หน้าจากข้อมูล DDS — {area_title}</div>
     <div class="exec-chips">
@@ -1111,7 +1372,7 @@ if active_page == NAV_PAGES[0]:
         <div class="kpi-tile kpi-amber">
             <div class="kpi-icon-box kicon-amber">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
             </div>
             <div class="kpi-body">
@@ -1147,7 +1408,6 @@ if active_page == NAV_PAGES[0]:
     </div>
     """)
 
-    # แถบสถานะรายจังหวัดทั้ง 5 จังหวัด (ODPC 2 Regional Pulse)
     if is_all_prov:
         prov_cards_html = []
         for p in selected_provinces_objs:
@@ -1279,13 +1539,13 @@ if active_page == NAV_PAGES[0]:
             </div>
             """)
 
-    # ตารางข้อมูลแบบ Interactive Enterprise Data Grid
     render_html("""
     <div class="sec-hdr">
         <div class="sec-bar"></div>
         <div class="sec-txt">ตารางสรุปตัวเลขทั้งหมด (คลิกหัวคอลัมน์เพื่อเรียงลำดับ หรือค้นหาได้ทันที)</div>
     </div>
     """)
+
     table_records = []
     for rank_idx, d in enumerate(view_items, start=1):
         fc_i, th_i, lt_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"])
@@ -1321,7 +1581,7 @@ if active_page == NAV_PAGES[0]:
         use_container_width=True,
         hide_index=True,
         height=min(480, 48 + len(df_summary_grid) * 38)
-    )        
+    )
 
 # =========================================================
 # หน้า 2: วิเคราะห์แนวโน้มรายโรค
@@ -1414,7 +1674,6 @@ elif active_page == NAV_PAGES[1]:
     hist["cases_num"] = pd.to_numeric(hist["cases"], errors="coerce")
     target_dt, first_dt = pd.to_datetime(d["target_week"]), hist["week_dt"].iloc[0]
 
-    # การ์ดกราฟที่ 1: ย้อนหลัง 1 ปี (52 สัปดาห์)
     with st.container(border=True):
         render_html(f"""
         <div class="card-hdr">
@@ -1464,7 +1723,6 @@ elif active_page == NAV_PAGES[1]:
         </div>
         """)
 
-    # การ์ดกราฟที่ 2: ซูมแนวโน้ม 12 สัปดาห์ล่าสุด + พยากรณ์สัปดาห์หน้า
     with st.container(border=True):
         hist_12 = hist.tail(12).copy()
         first_dt_12 = hist_12["week_dt"].iloc[0]
