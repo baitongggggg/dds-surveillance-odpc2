@@ -1097,6 +1097,102 @@ with tab2:
     fig.update_xaxes(showgrid=False, tickformat="%b %Y", nticks=7, zeroline=False, automargin=True, range=[first_dt - pd.Timedelta(days=7), target_dt + pd.Timedelta(days=18)])
     fig.update_yaxes(showgrid=True, gridcolor="#eef2f6", zeroline=False, nticks=6, tickformat=",d", automargin=True, range=[-max(0.3, y_max * 0.08), y_max * 1.22], title_text="จำนวนผู้ป่วย (ราย)")
     st.plotly_chart(fig, use_container_width=True)
+    # =========================================================
+    # กราฟที่ 2 (ต่อจากกราฟ 1 ปี): ซูมแนวโน้ม 12 สัปดาห์ล่าสุด + พยากรณ์
+    # =========================================================
+    hist_12 = hist.tail(12).copy()
+    first_dt_12 = hist_12["week_dt"].iloc[0]
+
+    diff_wk = fc_i - lt_i
+    if diff_wk > 0:
+        trend_badge = f'<span style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:3px 10px; border-radius:6px; font-weight:700; font-size:12.5px;">📈 สัปดาห์หน้าคาดว่าเพิ่มขึ้น +{diff_wk:,} ราย</span>'
+    elif diff_wk < 0:
+        trend_badge = f'<span style="background:#dcfce7; color:#15803d; border:1px solid #86efac; padding:3px 10px; border-radius:6px; font-weight:700; font-size:12.5px;">📉 สัปดาห์หน้าคาดว่าลดลง {diff_wk:,} ราย</span>'
+    else:
+        trend_badge = '<span style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:3px 10px; border-radius:6px; font-weight:700; font-size:12.5px;">➡️ สัปดาห์หน้าคาดว่าทรงตัว (0 ราย)</span>'
+
+    render_html(f"""
+    <div class="panel-box" style="margin-top:14px; margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; border-bottom:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:4px;">
+            <div class="panel-title" style="margin:0;">
+                <span class="prov-pill" style="background:{pt_sel['bg']}; color:{pt_sel['color']}; margin-right:6px;">จ.{d['province_name']}</span>
+                ซูมแนวโน้มระยะสั้น (12 สัปดาห์ล่าสุด + พยากรณ์สัปดาห์หน้า) — {d['disease_name']}
+            </div>
+            {trend_badge}
+        </div>
+        <div class="panel-sub">แสดงตัวเลขรายสัปดาห์ช่วง 3 เดือนล่าสุด เพื่อดูทิศทางขึ้น–ลงก่อนเข้าสู่สัปดาห์เป้าหมาย ({d['target_week']})</div>
+    </div>
+    """)
+
+    fig_12w = go.Figure()
+    prelim_12 = hist_12[hist_12["status"].str.contains("เบื้องต้น", na=False)]
+    if not prelim_12.empty:
+        fig_12w.add_vrect(
+            x0=prelim_12["week_dt"].iloc[0] - pd.Timedelta(days=3),
+            x1=prelim_12["week_dt"].iloc[-1] + pd.Timedelta(days=3),
+            fillcolor="rgba(245, 158, 11, 0.12)", line_width=0
+        )
+
+    fig_12w.add_trace(go.Scatter(
+        x=[first_dt_12, target_dt], y=[th_i, th_i], mode="lines",
+        name=f"เกณฑ์เตือน ({th_i:,} ราย)",
+        line=dict(color="#f59e0b", width=2.2, dash="dot"),
+        hovertemplate=f"เกณฑ์เตือน: {th_i:,} ราย<extra></extra>"
+    ))
+
+    pt_texts_12 = [f"{int(v):,}" if pd.notna(v) else "" for v in hist_12["cases_num"]]
+    fig_12w.add_trace(go.Scatter(
+        x=hist_12["week_dt"], y=hist_12["cases_num"],
+        mode="lines+markers+text", text=pt_texts_12, textposition="top center",
+        textfont=dict(size=11, color="#1e40af"),
+        name=f"ยอดจริง จ.{d['province_name']}",
+        line=dict(color="#2563eb", width=2.5),
+        marker=dict(size=7.5, color="#2563eb", line=dict(color="#ffffff", width=1)),
+        hovertemplate="สัปดาห์ %{x|%d %b %Y}<br>ยอดจริง: %{y:,.0f} ราย<extra></extra>"
+    ))
+
+    valid_12 = hist_12.dropna(subset=["cases_num"])
+    if not valid_12.empty:
+        fig_12w.add_trace(go.Scatter(
+            x=[valid_12["week_dt"].iloc[-1], target_dt],
+            y=[valid_12["cases_num"].iloc[-1], fc_i],
+            mode="lines", line=dict(color="#f43f5e", width=2.4, dash="dash"),
+            showlegend=False, hoverinfo="skip"
+        ))
+
+    fig_12w.add_trace(go.Scatter(
+        x=[target_dt], y=[fc_i], mode="markers+text",
+        text=[f"  {fc_i:,} ราย"], textposition="middle right",
+        textfont=dict(size=12, color="#be123c", family="Prompt, Noto Sans Thai, sans-serif"),
+        name=f"พยากรณ์สัปดาห์หน้า ({fc_i:,} ราย)",
+        marker=dict(color="#f43f5e", size=14, symbol="star", line=dict(color="#ffffff", width=1)),
+        hovertemplate=f"สัปดาห์เป้าหมาย {d['target_week']}<br>พยากรณ์: {fc_i:,} ราย<br>ช่วง 95%: {lo_i:,}–{hi_i:,} ราย<extra></extra>"
+    ))
+
+    if not prelim_12.empty:
+        fig_12w.add_trace(go.Scatter(
+            x=[None], y=[None], mode="markers", name="แถบเหลือง = ข้อมูลเบื้องต้น",
+            marker=dict(symbol="square", size=10, color="rgba(245, 158, 11, 0.35)", line=dict(color="#f59e0b", width=1)),
+            hoverinfo="skip"
+        ))
+
+    y_max_12 = max(float(valid_12["cases_num"].max() if not valid_12.empty else 0), float(th_i), float(fc_i), 1.0)
+    fig_12w.update_layout(
+        plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0, font=dict(size=12.5)),
+        font=dict(family="Noto Sans Thai, sans-serif", size=12.5, color="#64748b"),
+        margin=dict(l=45, r=45, t=65, b=45), height=360
+    )
+    fig_12w.update_xaxes(
+        showgrid=False, tickformat="%d %b %y", nticks=7, zeroline=False, automargin=True,
+        range=[first_dt_12 - pd.Timedelta(days=4), target_dt + pd.Timedelta(days=14)]
+    )
+    fig_12w.update_yaxes(
+        showgrid=True, gridcolor="#eef2f6", zeroline=False, nticks=6, tickformat=",d", automargin=True,
+        range=[-max(0.3, y_max_12 * 0.08), y_max_12 * 1.25], title_text="จำนวนผู้ป่วย (ราย)"
+    )
+    st.plotly_chart(fig_12w, use_container_width=True, key="chart_12w")
+    
 
 # =========================================================
 # แท็บ 3: บันทึกและติดตามผล + ตารางประวัติพับได้ + โหลด CSV
