@@ -959,4 +959,498 @@ if active_page == NAV_PAGES[0]:
 
             chart_items = list(reversed(chart_slice))
             if is_all_prov and len(selected_disease_codes) > 1:
-                y_names =
+                y_names = [f"จ.{d['province_name']} - {d['disease_name']}" for d in chart_items]
+            elif is_all_prov:
+                y_names = [f"จ.{d['province_name']} ({d['province_code']})" for d in chart_items]
+            else:
+                y_names = [f"{d['disease_name']} ({d['disease_code']})" for d in chart_items]
+
+            fc_vals = [to_int(d["forecast"]) for d in chart_items]
+            th_vals = [to_int(d["threshold"]) for d in chart_items]
+            fc_colors = ["#e11d48" if d["is_flagged"] else "#0284c7" for d in chart_items]
+            fc_texts = [f" {to_int(d['forecast']):,} ราย (เกินเกณฑ์)" if d["is_flagged"] else f" {to_int(d['forecast']):,} ราย" for d in chart_items]
+            th_texts = [f" {to_int(d['threshold']):,} ราย" for d in chart_items]
+
+            fig_ov = go.Figure()
+            fig_ov.add_trace(go.Bar(
+                y=y_names, x=th_vals, name="เกณฑ์เตือนปกติ (P75)", orientation="h",
+                marker=dict(color="#cbd5e1"), text=th_texts, textposition="outside",
+                textfont=dict(size=11.5, color="#64748b"), hovertemplate="%{y}<br>เกณฑ์เตือน: %{x:,} ราย<extra></extra>"
+            ))
+            fig_ov.add_trace(go.Bar(
+                y=y_names, x=fc_vals, name="ยอดคาดการณ์สัปดาห์หน้า", orientation="h",
+                marker=dict(color=fc_colors), text=fc_texts, textposition="outside",
+                textfont=dict(size=12, color="#0f172a"), hovertemplate="%{y}<br>ยอดคาดสัปดาห์หน้า: %{x:,} ราย<extra></extra>"
+            ))
+
+            max_x = max(fc_vals + th_vals + [1])
+            fig_ov.update_layout(
+                barmode="group", bargap=0.28, bargroupgap=0.12, plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+                legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="left", x=0, font=dict(size=12)),
+                font=dict(family="Google Sans, Noto Sans Thai, sans-serif", size=12, color="#334155"),
+                margin=dict(l=4, r=24, t=36, b=16), height=max(220, 72 + len(chart_items) * 56)
+            )
+            fig_ov.update_xaxes(showgrid=True, gridcolor="#f1f5f9", zeroline=False, range=[0, max_x * 1.48], nticks=5, tickformat=",d", title_text="จำนวนผู้ป่วย (ราย)")
+            fig_ov.update_yaxes(showgrid=False, automargin=True)
+            st.plotly_chart(fig_ov, use_container_width=True)
+
+    with col_action:
+        if not top_alerts:
+            render_html(f"""
+            <div class="safe-box">
+                <b>สัปดาห์เป้าหมาย {meta['target_week']} ยังไม่มีสัญญาณเตือนภัย</b><br>
+                ยอดคาดการณ์ของ <b>{disease_scope_text}</b> ใน <b>{area_title}</b> ยังอยู่ต่ำกว่าเกณฑ์เตือนปกติทั้งหมด สามารถติดตามตามรอบปกติได้
+            </div>
+            """)
+        else:
+            badge_classes = ["r-tag-1", "r-tag-2", "r-tag-3"]
+            items_html = []
+            for i, item in enumerate(top_alerts):
+                fc_i, th_i, lt_i = to_int(item["forecast"]), to_int(item["threshold"]), to_int(item["latest_cases"])
+                lo_i, hi_i, diff = to_int(item["pi_low"]), to_int(item["pi_high"]), fc_i - th_i
+                pt = get_prov_theme(item["province_code"])
+                prov_pill = f'<span class="prov-tag" style="background:{pt["bg"]}; color:{pt["color"]}; border:1px solid {pt["border"]}; margin-right:6px;">จ.{item["province_name"]}</span>' if is_all_prov else ""
+                b_cls = badge_classes[min(i, 2)]
+
+                items_html.append(f"""
+                <div class="alert-item">
+                    <div class="alert-item-top">
+                        <div>{prov_pill}<span class="alert-item-title">{item['disease_name']}</span></div>
+                        <span class="{b_cls}">อันดับ #{i+1}</span>
+                    </div>
+                    <ul class="alert-ul">
+                        <li>ยอดคาดสัปดาห์หน้า: <b style="color:#be123c;">{fc_i:,} ราย</b> <span style="color:#64748b; font-size:12px;">(ช่วง 95%: {lo_i:,}–{hi_i:,} ราย)</span></li>
+                        <li>เกณฑ์เตือนปกติ: <b>{th_i:,} ราย</b> <span style="color:#be123c; font-weight:600;">(เกินเกณฑ์ +{diff:,} ราย)</span></li>
+                        <li>ยอดจริงสัปดาห์ล่าสุด: <b>{lt_i:,} ราย</b></li>
+                    </ul>
+                </div>
+                """)
+
+            render_html(f"""
+            <div class="alert-box">
+                <div class="alert-box-hdr">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span>ลำดับพื้นที่และโรคที่ควรเฝ้าระวังก่อน (Top 3)</span>
+                </div>
+                {"".join(items_html)}
+            </div>
+            """)
+
+    # ตารางข้อมูลแบบ Interactive Enterprise Data Grid (st.dataframe + st.column_config)
+    render_html("""
+    <div class="sec-hdr">
+        <div class="sec-bar"></div>
+        <div class="sec-txt">ตารางสรุปตัวเลขทั้งหมด (คลิกหัวคอลัมน์เพื่อเรียงลำดับ หรือค้นหาได้ทันที)</div>
+    </div>
+    """)
+
+    table_records = []
+    for rank_idx, d in enumerate(view_items, start=1):
+        fc_i, th_i, lt_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"])
+        pct_of_th = int(round((fc_i / th_i) * 100)) if th_i > 0 else (100 if fc_i > 0 else 0)
+        spark_vals = [
+            to_int(h["cases"], 0)
+            for h in d.get("history", [])[-12:]
+        ] + [fc_i]
+
+        row_dict = {
+            "อันดับ": rank_idx,
+            "จังหวัด": f"จ.{d['province_name']}",
+            "กลุ่มโรคเฝ้าระวัง": f"{d['disease_name']} ({d['disease_code']})",
+            "แนวโน้ม 12 สัปดาห์": spark_vals,
+            "ยอดล่าสุด": lt_i,
+            "คาดสัปดาห์หน้า": fc_i,
+            "เกณฑ์เตือน (P75)": th_i,
+            "ระดับเทียบเกณฑ์": min(pct_of_th, 200),
+            "สถานะ": "🔴 เฝ้าระวัง" if d["is_flagged"] else "🟢 ปกติ"
+        }
+        if not is_all_prov:
+            del row_dict["จังหวัด"]
+        table_records.append(row_dict)
+
+    df_summary_grid = pd.DataFrame(table_records)
+
+    col_cfg = {
+        "อันดับ": st.column_config.NumberColumn("อันดับ", width="small", format="%d"),
+        "จังหวัด": st.column_config.TextColumn("จังหวัด", width="small"),
+        "กลุ่มโรคเฝ้าระวัง": st.column_config.TextColumn("กลุ่มโรคเฝ้าระวัง", width="medium"),
+        "แนวโน้ม 12 สัปดาห์": st.column_config.LineChartColumn(
+            "แนวโน้ม 12 สัปดาห์ + คาดการณ์",
+            width="medium",
+            help="กราฟเส้นย้อนหลัง 12 สัปดาห์จนถึงจุดพยากรณ์สัปดาห์หน้า"
+        ),
+        "ยอดล่าสุด": st.column_config.NumberColumn("ยอดล่าสุด", format="%d ราย"),
+        "คาดสัปดาห์หน้า": st.column_config.NumberColumn("คาดสัปดาห์หน้า", format="%d ราย"),
+        "เกณฑ์เตือน (P75)": st.column_config.NumberColumn("เกณฑ์เตือน (P75)", format="%d ราย"),
+        "ระดับเทียบเกณฑ์": st.column_config.ProgressColumn(
+            "สัดส่วนเทียบเกณฑ์",
+            help="100% = เท่ากับเกณฑ์เตือน P75 พอดี",
+            format="%d%%",
+            min_value=0,
+            max_value=200,
+        ),
+        "สถานะ": st.column_config.TextColumn("สถานะ", width="small"),
+    }
+
+    st.dataframe(
+        df_summary_grid,
+        column_config=col_cfg,
+        use_container_width=True,
+        hide_index=True,
+        height=min(480, 48 + len(df_summary_grid) * 38)
+    )
+
+# =========================================================
+# หน้า 2: วิเคราะห์แนวโน้มรายโรค
+# =========================================================
+elif active_page == NAV_PAGES[1]:
+    if len(view_items) == 1:
+        d = view_items[0]
+    else:
+        with st.container(border=True):
+            c_p, c_d = st.columns(2, gap="medium")
+
+            avail_provs = {}
+            for it in view_items:
+                if it["province_code"] not in avail_provs:
+                    avail_provs[it["province_code"]] = f"จ.{it['province_name']}"
+
+            if len(avail_provs) > 1:
+                prov_lbl_to_code = {v: k for k, v in avail_provs.items()}
+                sel_p_lbl = c_p.selectbox("เลือกจังหวัดที่ต้องการดูแนวโน้ม", list(prov_lbl_to_code.keys()), key="tab2_prov")
+                pick_p_code = prov_lbl_to_code[sel_p_lbl]
+            else:
+                pick_p_code = list(avail_provs.keys())[0]
+                c_p.selectbox("จังหวัดที่เลือก", list(avail_provs.values()), disabled=True, key="tab2_prov_fixed")
+
+            prov_items = [it for it in view_items if it["province_code"] == pick_p_code]
+            d_map = {}
+            for it in prov_items:
+                st_tag = "เกินเกณฑ์เตือน" if it["is_flagged"] else "ปกติ"
+                d_map[f"{it['disease_name']} ({it['disease_code']}) • {st_tag}"] = it
+
+            sel_d_lbl = c_d.selectbox("เลือกกลุ่มโรคที่ต้องการดูแนวโน้ม", list(d_map.keys()), key="tab2_dis")
+            d = d_map[sel_d_lbl]
+
+    pt_sel = get_prov_theme(d["province_code"])
+    fc_i, th_i, lt_i, lo_i, hi_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"]), to_int(d["pi_low"]), to_int(d["pi_high"])
+    diff_wk = fc_i - lt_i
+
+    m1, m2, m3, m4 = st.columns(4, gap="medium")
+    m1.metric("ยอดจริงสัปดาห์ล่าสุด", f"{lt_i:,} ราย")
+    m2.metric(
+        f"พยากรณ์สัปดาห์เป้าหมาย ({d['target_week']})",
+        f"{fc_i:,} ราย",
+        delta=f"ช่วง 95%: {lo_i:,} – {hi_i:,} ราย",
+        delta_color="off"
+    )
+    m3.metric("เกณฑ์เตือนรายโรค (P75)", f"{th_i:,} ราย")
+    m4.metric(
+        "ผลการเทียบเกณฑ์",
+        "เกินเกณฑ์เตือน" if d["is_flagged"] else "ต่ำกว่าเกณฑ์ (ปกติ)",
+        delta=f"{diff_wk:+,} ราย จากสัปดาห์ล่าสุด",
+        delta_color="inverse" if d["is_flagged"] else "normal"
+    )
+
+    hist = pd.DataFrame(d["history"])
+    hist["week_dt"] = pd.to_datetime(hist["week"])
+    hist["cases_num"] = pd.to_numeric(hist["cases"], errors="coerce")
+    target_dt, first_dt = pd.to_datetime(d["target_week"]), hist["week_dt"].iloc[0]
+
+    # การ์ดกราฟที่ 1: ย้อนหลัง 1 ปี (52 สัปดาห์)
+    with st.container(border=True):
+        render_html(f"""
+        <div class="card-hdr">
+            <div>
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <span class="prov-tag" style="background:{pt_sel['bg']}; color:{pt_sel['color']}; border:1px solid {pt_sel['border']};">จ.{d['province_name']}</span>
+                    <span class="card-h3">แนวโน้มผู้ป่วยรายสัปดาห์ (ย้อนหลัง 1 ปี) — {d['disease_name']}</span>
+                </div>
+                <div class="card-desc">แสดงรอบฤดูกาลย้อนหลัง 52 สัปดาห์ เทียบกับเส้นเกณฑ์เตือนและจุดพยากรณ์สัปดาห์หน้า</div>
+            </div>
+        </div>
+        """)
+
+        fig = go.Figure()
+        prelim = hist[hist["status"].str.contains("เบื้องต้น", na=False)]
+        if not prelim.empty:
+            fig.add_vrect(x0=prelim["week_dt"].iloc[0] - pd.Timedelta(days=3), x1=prelim["week_dt"].iloc[-1] + pd.Timedelta(days=3), fillcolor="rgba(245, 158, 11, 0.12)", line_width=0)
+
+        fig.add_trace(go.Scatter(x=[first_dt, target_dt], y=[th_i, th_i], mode="lines", name=f"เกณฑ์เตือน ({th_i:,} ราย)", line=dict(color="#f59e0b", width=2.2, dash="dot"), hovertemplate=f"เกณฑ์เตือน: {th_i:,} ราย<extra></extra>"))
+        fig.add_trace(go.Scatter(x=hist["week_dt"], y=hist["cases_num"], mode="lines+markers", name=f"ยอดจริง จ.{d['province_name']}", line=dict(color="#2563eb", width=2.4), marker=dict(size=6.5, color="#2563eb", line=dict(color="#ffffff", width=1)), hovertemplate="สัปดาห์ %{x|%d %b %Y}<br>ยอดจริง: %{y:,.0f} ราย<extra></extra>"))
+
+        valid = hist.dropna(subset=["cases_num"])
+        if not valid.empty:
+            fig.add_trace(go.Scatter(x=[valid["week_dt"].iloc[-1], target_dt], y=[valid["cases_num"].iloc[-1], fc_i], mode="lines", line=dict(color="#f43f5e", width=2, dash="dash"), showlegend=False, hoverinfo="skip"))
+
+        fig.add_trace(go.Scatter(x=[target_dt], y=[fc_i], mode="markers", name=f"พยากรณ์สัปดาห์หน้า ({fc_i:,} ราย)", marker=dict(color="#f43f5e", size=14, symbol="star", line=dict(color="#ffffff", width=1)), hovertemplate=f"สัปดาห์เป้าหมาย {d['target_week']}<br>พยากรณ์: {fc_i:,} ราย<br>ช่วง 95%: {lo_i:,}–{hi_i:,} ราย<extra></extra>"))
+        if not prelim.empty:
+            fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name="แถบเหลือง = ข้อมูลเบื้องต้น", marker=dict(symbol="square", size=10, color="rgba(245, 158, 11, 0.35)", line=dict(color="#f59e0b", width=1)), hoverinfo="skip"))
+
+        y_max = max(float(valid["cases_num"].max() if not valid.empty else 0), float(th_i), float(fc_i), 1.0)
+        fig.update_layout(
+            plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="left", x=0, font=dict(size=12.5)),
+            font=dict(family="Google Sans, Noto Sans Thai, sans-serif", size=12.5, color="#64748b"),
+            margin=dict(l=40, r=20, t=45, b=35), height=365
+        )
+        fig.update_xaxes(showgrid=False, tickformat="%b %Y", nticks=7, zeroline=False, automargin=True, range=[first_dt - pd.Timedelta(days=7), target_dt + pd.Timedelta(days=18)])
+        fig.update_yaxes(showgrid=True, gridcolor="#f1f5f9", zeroline=False, nticks=6, tickformat=",d", automargin=True, range=[-max(0.3, y_max * 0.08), y_max * 1.22], title_text="จำนวนผู้ป่วย (ราย)")
+        st.plotly_chart(fig, use_container_width=True, key="chart_52w")
+
+        render_html("""
+        <div class="legend-inline">
+            <b style="color:#004d28;">วิธีอ่านกราฟ (ภาพรวม 1 ปี):</b><br>
+            • <b style="color:#2563eb;">เส้นทึบสีน้ำเงิน:</b> ยอดผู้ป่วยจริงรายสัปดาห์ย้อนหลัง 52 สัปดาห์ ใช้ดูรอบฤดูกาลของโรค<br>
+            • <b style="color:#d97706;">เส้นประสีเหลือง:</b> เกณฑ์เตือนปกติ (P75) หากยอดผู้ป่วยสูงเกินเส้นนี้ถือว่าสูงกว่าเกณฑ์ปกติของพื้นที่<br>
+            • <b style="color:#be123c;">รูปดาวสีแดง (ขวาสุด):</b> ยอดคาดการณ์สัปดาห์หน้า หากดาวลอยอยู่เหนือเส้นประสีเหลือง แสดงว่าสัปดาห์หน้ามีแนวโน้มเกินเกณฑ์เตือน <i>(หมายเหตุ: แถบพื้นหลังสีเหลืองอ่อนช่วง 1–2 สัปดาห์ล่าสุด คือข้อมูลเบื้องต้นที่หน่วยบริการยังทยอยบันทึกเข้าระบบ)</i>
+        </div>
+        """)
+
+    # การ์ดกราฟที่ 2: ซูมแนวโน้ม 12 สัปดาห์ล่าสุด + พยากรณ์สัปดาห์หน้า
+    with st.container(border=True):
+        hist_12 = hist.tail(12).copy()
+        first_dt_12 = hist_12["week_dt"].iloc[0]
+
+        if diff_wk > 0:
+            trend_pill = f'<span style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; padding:4px 12px; border-radius:8px; font-weight:700; font-size:12.5px;">สัปดาห์หน้าคาดว่าเพิ่มขึ้น +{diff_wk:,} ราย</span>'
+        elif diff_wk < 0:
+            trend_pill = f'<span style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; padding:4px 12px; border-radius:8px; font-weight:700; font-size:12.5px;">สัปดาห์หน้าคาดว่าลดลง {diff_wk:,} ราย</span>'
+        else:
+            trend_pill = '<span style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:4px 12px; border-radius:8px; font-weight:700; font-size:12.5px;">สัปดาห์หน้าคาดว่าทรงตัว (0 ราย)</span>'
+
+        render_html(f"""
+        <div class="card-hdr">
+            <div>
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <span class="prov-tag" style="background:{pt_sel['bg']}; color:{pt_sel['color']}; border:1px solid {pt_sel['border']};">จ.{d['province_name']}</span>
+                    <span class="card-h3">ซูมแนวโน้มระยะสั้น (12 สัปดาห์ล่าสุด + พยากรณ์สัปดาห์หน้า) — {d['disease_name']}</span>
+                </div>
+                <div class="card-desc">แสดงตัวเลขรายสัปดาห์ช่วง 3 เดือนล่าสุด เพื่อดูทิศทางขึ้น–ลงก่อนเข้าสู่สัปดาห์เป้าหมาย ({d['target_week']})</div>
+            </div>
+            {trend_pill}
+        </div>
+        """)
+
+        fig_12w = go.Figure()
+        prelim_12 = hist_12[hist_12["status"].str.contains("เบื้องต้น", na=False)]
+        if not prelim_12.empty:
+            fig_12w.add_vrect(x0=prelim_12["week_dt"].iloc[0] - pd.Timedelta(days=3), x1=prelim_12["week_dt"].iloc[-1] + pd.Timedelta(days=3), fillcolor="rgba(245, 158, 11, 0.12)", line_width=0)
+
+        fig_12w.add_trace(go.Scatter(x=[first_dt_12, target_dt], y=[th_i, th_i], mode="lines", name=f"เกณฑ์เตือน ({th_i:,} ราย)", line=dict(color="#f59e0b", width=2.2, dash="dot"), hovertemplate=f"เกณฑ์เตือน: {th_i:,} ราย<extra></extra>"))
+
+        pt_texts_12 = [f"{int(v):,}" if pd.notna(v) else "" for v in hist_12["cases_num"]]
+        fig_12w.add_trace(go.Scatter(
+            x=hist_12["week_dt"], y=hist_12["cases_num"],
+            mode="lines+markers+text", text=pt_texts_12, textposition="top center",
+            textfont=dict(size=11.5, color="#1d4ed8"),
+            name=f"ยอดจริง จ.{d['province_name']}",
+            line=dict(color="#2563eb", width=2.5),
+            marker=dict(size=8, color="#2563eb", line=dict(color="#ffffff", width=1.5)),
+            hovertemplate="สัปดาห์ %{x|%d %b %Y}<br>ยอดจริง: %{y:,.0f} ราย<extra></extra>"
+        ))
+
+        valid_12 = hist_12.dropna(subset=["cases_num"])
+        if not valid_12.empty:
+            fig_12w.add_trace(go.Scatter(x=[valid_12["week_dt"].iloc[-1], target_dt], y=[valid_12["cases_num"].iloc[-1], fc_i], mode="lines", line=dict(color="#f43f5e", width=2.4, dash="dash"), showlegend=False, hoverinfo="skip"))
+
+        fig_12w.add_trace(go.Scatter(
+            x=[target_dt], y=[fc_i], mode="markers+text",
+            text=[f"  {fc_i:,} ราย"], textposition="middle right",
+            textfont=dict(size=12.5, color="#be123c", family="Google Sans, Noto Sans Thai, sans-serif"),
+            name=f"พยากรณ์สัปดาห์หน้า ({fc_i:,} ราย)",
+            marker=dict(color="#f43f5e", size=14, symbol="star", line=dict(color="#ffffff", width=1)),
+            hovertemplate=f"สัปดาห์เป้าหมาย {d['target_week']}<br>พยากรณ์: {fc_i:,} ราย<br>ช่วง 95%: {lo_i:,}–{hi_i:,} ราย<extra></extra>"
+        ))
+
+        y_max_12 = max(float(valid_12["cases_num"].max() if not valid_12.empty else 0), float(th_i), float(fc_i), 1.0)
+        fig_12w.update_layout(
+            plot_bgcolor="#ffffff", paper_bgcolor="#ffffff", hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="left", x=0, font=dict(size=12.5)),
+            font=dict(family="Google Sans, Noto Sans Thai, sans-serif", size=12.5, color="#64748b"),
+            margin=dict(l=40, r=40, t=45, b=35), height=355
+        )
+        fig_12w.update_xaxes(showgrid=False, tickformat="%d %b %y", nticks=7, zeroline=False, automargin=True, range=[first_dt_12 - pd.Timedelta(days=4), target_dt + pd.Timedelta(days=14)])
+        fig_12w.update_yaxes(showgrid=True, gridcolor="#f1f5f9", zeroline=False, nticks=6, tickformat=",d", automargin=True, range=[-max(0.3, y_max_12 * 0.08), y_max_12 * 1.25], title_text="จำนวนผู้ป่วย (ราย)")
+        st.plotly_chart(fig_12w, use_container_width=True, key="chart_12w")
+
+        render_html("""
+        <div class="legend-inline">
+            <b style="color:#004d28;">วิธีอ่านกราฟ (ซูมระยะสั้น 3 เดือนล่าสุด):</b><br>
+            • <b style="color:#2563eb;">ตัวเลขบนจุดสีน้ำเงิน:</b> จำนวนผู้ป่วยจริงในแต่ละสัปดาห์ช่วง 12 สัปดาห์ล่าสุด<br>
+            • <b style="color:#be123c;">เส้นประสีแดงและรูปดาว:</b> แสดงทิศทางและความชันจากสัปดาห์ล่าสุดไปยังสัปดาห์เป้าหมาย เพื่อประเมินว่าสถานการณ์กำลัง <b style="color:#be123c;">ไต่ระดับเพิ่มขึ้น</b> <b style="color:#be123c;">ทรงตัว</b> หรือ <b style="color:#be123c;">เริ่มลดลง</b> เมื่อเทียบกับเส้นเกณฑ์เตือนสีเหลือง
+        </div>
+        """)
+
+# =========================================================
+# หน้า 3: บันทึกและติดตามผล + ตาราง Interactive Data Grid
+# =========================================================
+elif active_page == NAV_PAGES[2]:
+    reg_df = load_registry(selected_prov_code, selected_disease_code)
+
+    if reg_df.empty:
+        st.info("ยังไม่มีรายการในทะเบียนตามจังหวัดและโรคที่เลือก")
+    else:
+        reg_df["month"] = reg_df["target_week"].astype(str).str.slice(0, 7)
+
+        c_title, c_month = st.columns([3.2, 1])
+        with c_title:
+            render_html(f"""
+            <div class="sec-hdr" style="margin-top:0;">
+                <div class="sec-bar"></div>
+                <div class="sec-txt">สรุปตัวชี้วัดประเมินความแม่นยำรายเดือน — {area_title}</div>
+            </div>
+            """)
+        sel_m = c_month.selectbox("เลือกเดือนประเมิน", ["ทุกเดือน"] + sorted(reg_df["month"].unique().tolist(), reverse=True), label_visibility="collapsed")
+
+        ev = reg_df if sel_m == "ทุกเดือน" else reg_df[reg_df["month"] == sel_m]
+        ev["settled_num"] = pd.to_numeric(ev["settled_actual_cases"], errors="coerce")
+        closed = ev[ev["settled_num"].notna()].copy()
+
+        if closed.empty:
+            m1_val, m2_val, m3_val, m4_val = "รอปิดยอดจริง", "รอปิดยอดจริง", "0 ครั้ง", "รอระบุเวลา"
+            m3_note = "คำนวณเมื่อกรอกยอดจริง"
+        else:
+            flagged = closed["is_flagged"].astype(str).str.lower() == "true"
+            actual_met = closed["settled_num"] >= pd.to_numeric(closed["frozen_threshold"], errors="coerce")
+            tp, fp, fn = int((flagged & actual_met).sum()), int((flagged & ~actual_met).sum()), int((~flagged & actual_met).sum())
+            avg_hr = ((pd.to_datetime(closed["check_start_time"], errors="coerce") - pd.to_datetime(closed["alert_sent_time"], errors="coerce")).dt.total_seconds() / 3600).dropna().mean()
+            m1_val, m2_val = ratio_text(tp, tp + fp), ratio_text(tp, tp + fn)
+            m3_val, m3_note = f"รวม {tp + fp} (เกิน {fp})", f"เตือนเกิน {fp} ครั้ง"
+            m4_val = f"{avg_hr:.1f} ชม." if pd.notna(avg_hr) else "ยังไม่ระบุเวลา"
+
+        c1_m, c2_m, c3_m, c4_m = st.columns(4, gap="medium")
+        c1_m.metric("1. ความแม่นของสัญญาณ (Precision)", m1_val, delta="เตือนแล้วเข้าเกณฑ์จริง", delta_color="off")
+        c2_m.metric("2. ความครอบคลุม (Recall)", m2_val, delta="จับเหตุการณ์พุ่งเกินเกณฑ์", delta_color="off")
+        c3_m.metric("3. ภาระการตรวจสอบ", m3_val, delta=m3_note, delta_color="off")
+        c4_m.metric("4. ความเร็วในการเริ่มตรวจ", m4_val, delta="จากเวลาส่งสัญญาณ", delta_color="off")
+
+        with st.container(border=True):
+            render_html("""
+            <div class="card-hdr">
+                <div>
+                    <div class="card-h3">บันทึกผลการตรวจสอบภาคสนาม และปิดยอดผู้ป่วยจริง</div>
+                    <div class="card-desc">เลือกรอบรายงานเพื่อบันทึกการลงสอบสวนโรคและอัปเดตยอดจริงเมื่อข้อมูลนิ่ง (หลังครบ 1–2 สัปดาห์)</div>
+                </div>
+            </div>
+            """)
+            reg_df["label"] = (
+                reg_df["run_id"] + "  |  จ." + reg_df["province_name"].astype(str) +
+                "  |  " + reg_df["disease_name"] + "  |  สัปดาห์ " + reg_df["target_week"]
+            )
+            rec = reg_df[reg_df["label"] == st.selectbox("เลือกรอบรายงานที่ต้องการบันทึก", reg_df["label"].tolist())].iloc[0]
+
+            rec_status_txt = "🔴 ชี้เป้าเฝ้าระวัง" if str(rec["is_flagged"]).lower() == "true" else "🟢 ปกติ"
+            render_html(f"""
+            <div class="rec-bar">
+                <span><b>สถานะรอบนี้:</b> {rec_status_txt}</span>
+                <span><b>ยอดคาดการณ์เดิม:</b> {fmt_int(rec['frozen_forecast'])} ราย</span>
+                <span><b>เกณฑ์เตือนเดิม:</b> {fmt_int(rec['frozen_threshold'])} ราย</span>
+                <span><b>เวลาส่งสัญญาณ:</b> {clean_str(rec['alert_sent_time']) or '-'}</span>
+            </div>
+            """)
+
+            with st.form("track_form", border=False):
+                c1, c2 = st.columns(2)
+                in_time = c1.text_input("1. เวลาเริ่มตรวจ (ใช้คิดความเร็ว)", value=clean_str(rec["check_start_time"]), placeholder="เช่น 2026-11-24 11:30")
+                f_opts = ["", "พบกลุ่มก้อน", "พบการส่งย้อนหลัง", "ยังสรุปไม่ได้", "ปกติ"]
+                cur_f = clean_str(rec["field_result"])
+                in_field = c2.selectbox("2. ผลตรวจสอบภาคสนาม", f_opts, index=f_opts.index(cur_f) if cur_f in f_opts else 0)
+
+                c3, c4 = st.columns(2)
+                in_action = c3.text_input("3. การดำเนินการ", value=clean_str(rec["action_taken"]), placeholder="เช่น แจ้งทีม SRRT พื้นที่ตรวจสอบซ้ำ")
+                raw_act = clean_str(rec["settled_actual_cases"])
+                in_actual = c4.text_input("4. ยอดจริงนิ่งแล้ว (กรอกเมื่อครบ 1–2 สัปดาห์)", value=str(to_int(raw_act)) if raw_act != "" else "", placeholder="จำนวนเต็ม (เว้นว่างได้หากยอดยังไม่นิ่ง)")
+
+                if st.form_submit_button("บันทึกผลและอัปเดตตัวชี้วัด", type="primary"):
+                    actual_val = None
+                    if in_actual.strip() != "":
+                        try:
+                            actual_val = int(round(float(in_actual.strip())))
+                            if actual_val < 0:
+                                st.error("ยอดผู้ป่วยจริงต้องไม่ติดลบ")
+                                st.stop()
+                        except ValueError:
+                            st.error("กรุณากรอกยอดจริงเป็นตัวเลขจำนวนเต็ม")
+                            st.stop()
+                    update_registry(rec["run_id"], rec["province_code"], rec["disease_code"], rec["target_week"], in_time.strip(), in_field, in_action.strip(), actual_val)
+                    st.success("บันทึกเรียบร้อยแล้ว")
+                    st.rerun()
+
+        render_html(f"""
+        <div class="sec-hdr">
+            <div class="sec-bar"></div>
+            <div class="sec-txt">ทะเบียนประวัติการติดตามผล ({len(reg_df):,} รายการ)</div>
+        </div>
+        """)
+
+        c_flt, c_dl = st.columns([2.8, 1.1])
+        with c_flt:
+            tbl_filter = st.radio(
+                "กรองทะเบียน",
+                ["ทั้งหมด", "เฉพาะที่ชี้เป้า", "รอปิดยอดจริง"],
+                horizontal=True,
+                label_visibility="collapsed"
+            )
+
+        show_reg = reg_df.copy()
+        if tbl_filter == "เฉพาะที่ชี้เป้า":
+            show_reg = show_reg[show_reg["is_flagged"].astype(str).str.lower() == "true"]
+        elif tbl_filter == "รอปิดยอดจริง":
+            show_reg = show_reg[
+                show_reg["settled_actual_cases"].isna() |
+                (show_reg["settled_actual_cases"].astype(str).str.strip() == "")
+            ]
+
+        with c_dl:
+            export_cols = [
+                "run_id", "target_week", "province_code", "province_name",
+                "disease_code", "disease_name", "frozen_forecast", "frozen_threshold",
+                "is_flagged", "alert_sent_time", "check_start_time",
+                "field_result", "action_taken", "settled_actual_cases"
+            ]
+            valid_cols = [c for c in export_cols if c in show_reg.columns]
+            csv_bytes = show_reg[valid_cols].to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
+            st.download_button(
+                label="ส่งออกทะเบียน (CSV)",
+                data=csv_bytes,
+                file_name=f"tracking_registry_{meta['cutoff_date']}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
+        if show_reg.empty:
+            st.info("ไม่พบรายการตามตัวกรองที่เลือก")
+        else:
+            reg_grid_rows = []
+            for _, r in show_reg.iterrows():
+                act_s = clean_str(r["settled_actual_cases"])
+                reg_grid_rows.append({
+                    "สัปดาห์เป้าหมาย": str(r["target_week"]),
+                    "จังหวัด": f"จ.{r['province_name']}",
+                    "กลุ่มโรค": str(r["disease_name"]),
+                    "ยอดคาดการณ์": to_int(r["frozen_forecast"]),
+                    "เกณฑ์เตือน": to_int(r["frozen_threshold"]),
+                    "สถานะ": "🔴 ชี้เป้า" if str(r["is_flagged"]).lower() == "true" else "🟢 ปกติ",
+                    "ผลภาคสนาม": clean_str(r["field_result"]) or "-",
+                    "การดำเนินการ": clean_str(r["action_taken"]) or "-",
+                    "ยอดจริงนิ่งแล้ว": f"{fmt_int(act_s)} ราย" if act_s != "" else "รอยอดนิ่ง"
+                })
+            df_reg_grid = pd.DataFrame(reg_grid_rows)
+            if not is_all_prov:
+                df_reg_grid = df_reg_grid.drop(columns=["จังหวัด"])
+
+            st.dataframe(
+                df_reg_grid,
+                column_config={
+                    "ยอดคาดการณ์": st.column_config.NumberColumn("ยอดคาดการณ์", format="%d ราย"),
+                    "เกณฑ์เตือน": st.column_config.NumberColumn("เกณฑ์เตือน", format="%d ราย"),
+                },
+                use_container_width=True,
+                hide_index=True,
+                height=min(480, 48 + len(df_reg_grid) * 38)
+            )
