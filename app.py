@@ -1289,13 +1289,11 @@ if active_page == NAV_PAGES[0]:
     table_records = []
     for rank_idx, d in enumerate(view_items, start=1):
         fc_i, th_i, lt_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"])
-        spark_vals = [to_int(h["cases"], 0) for h in d.get("history", [])[-12:]] + [fc_i]
 
         row_dict = {
             "อันดับ": rank_idx,
             "จังหวัด": f"จ.{d['province_name']}",
             "กลุ่มโรคเฝ้าระวัง": f"{d['disease_name']} ({d['disease_code']})",
-            "แนวโน้ม 12 สัปดาห์": spark_vals,
             "ยอดล่าสุด": lt_i,
             "คาดสัปดาห์หน้า": fc_i,
             "เกณฑ์เตือน (P75)": th_i,
@@ -1311,11 +1309,6 @@ if active_page == NAV_PAGES[0]:
         "อันดับ": st.column_config.NumberColumn("อันดับ", width="small", format="%d"),
         "จังหวัด": st.column_config.TextColumn("จังหวัด", width="small"),
         "กลุ่มโรคเฝ้าระวัง": st.column_config.TextColumn("กลุ่มโรคเฝ้าระวัง", width="medium"),
-        "แนวโน้ม 12 สัปดาห์": st.column_config.LineChartColumn(
-            "แนวโน้ม 12 สัปดาห์ + คาดการณ์",
-            width="medium",
-            help="กราฟเส้นย้อนหลัง 12 สัปดาห์จนถึงจุดพยากรณ์สัปดาห์หน้า"
-        ),
         "ยอดล่าสุด": st.column_config.NumberColumn("ยอดล่าสุด", format="%d ราย"),
         "คาดสัปดาห์หน้า": st.column_config.NumberColumn("คาดสัปดาห์หน้า", format="%d ราย"),
         "เกณฑ์เตือน (P75)": st.column_config.NumberColumn("เกณฑ์เตือน (P75)", format="%d ราย"),
