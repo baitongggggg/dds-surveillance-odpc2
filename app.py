@@ -88,9 +88,9 @@ def get_prov_theme(prov_code):
     return PROVINCE_THEME.get(str(prov_code).strip(), {"dot": "⚪", "color": "#475569", "bg": "#f1f5f9"})
 
 
-WEEKLY_FILE = "weekly_summary.csv"
-JSON_FILE = "dashboard_data.json"
-CSV_REGISTRY = "tracking_registry.csv"
+WEEKLY_FILE = "weekly_summary (1).csv"
+JSON_FILE = "dashboard_data (1).json"
+CSV_REGISTRY = "tracking_registry (1).csv"
 
 # =========================================================
 # สไตล์เว็บไซต์พอร์ทัลสาธารณสุข (เขียว-ขาว) + ช่องติ๊กชมพูพาสเทล
