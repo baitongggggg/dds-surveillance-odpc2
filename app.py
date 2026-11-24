@@ -117,9 +117,9 @@ def resolve_data_path(target_name):
     return os.path.join(BASE_DIR, target_name)
 
 
-WEEKLY_FILE = resolve_data_path("weekly_summary.csv")
-JSON_FILE = resolve_data_path("dashboard_data.json")
-CSV_REGISTRY = os.path.join(BASE_DIR, "tracking_registry.csv")
+WEEKLY_FILE = resolve_data_path("weekly_summary (1).csv")
+JSON_FILE = resolve_data_path("dashboard_data (1).json")
+CSV_REGISTRY = os.path.join(BASE_DIR, "tracking_registry (1).csv")
 
 # =========================================================
 # สไตล์เว็บแอปพลิเคชันทางการ (Enterprise Web App Architecture)
