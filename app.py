@@ -1925,7 +1925,7 @@ elif active_page == NAV_PAGES[2]:
     else:
         reg_df["month"] = reg_df["target_week"].astype(str).str.slice(0, 7)
 
-        c_title, c_month = st.columns([3.2, 1])
+        c_title, c_auto, c_month = st.columns([2.4, 1.35, 1.0], gap="small")
         with c_title:
             render_html(f"""
             <div class="sec-hdr" style="margin-top:0;">
@@ -1933,7 +1933,23 @@ elif active_page == NAV_PAGES[2]:
                 <div class="sec-txt">สรุปตัวชี้วัดประเมินความแม่นยำรายเดือน — {area_title}</div>
             </div>
             """)
+        with c_auto:
+            if st.button("ดึงยอดจริงมาปิดยอดอัตโนมัติ", type="secondary", use_container_width=True):
+                cnt = auto_settle_from_weekly(weekly_df)
+                if cnt > 0:
+                    st.session_state["auto_settle_msg"] = ("success", f"ดึงยอดจริงที่นิ่งแล้วมาปิดยอดอัตโนมัติสำเร็จ {cnt:,} รายการ")
+                    st.rerun()
+                else:
+                    st.session_state["auto_settle_msg"] = ("info", "ยังไม่มีรายการใหม่ที่ครบกำหนดยอดนิ่ง (ข้อมูลต้องผ่านช่วงเบื้องต้น 2 สัปดาห์แล้ว หรืออัปโหลดไฟล์ DDS สัปดาห์ถัดไปเพิ่ม)")
+
         sel_m = c_month.selectbox("เลือกเดือนประเมิน", ["ทุกเดือน"] + sorted(reg_df["month"].unique().tolist(), reverse=True), label_visibility="collapsed")
+
+        if "auto_settle_msg" in st.session_state:
+            msg_type, msg_txt = st.session_state.pop("auto_settle_msg")
+            if msg_type == "success":
+                st.success(msg_txt)
+            else:
+                st.info(msg_txt)
 
         ev = reg_df if sel_m == "ทุกเดือน" else reg_df[reg_df["month"] == sel_m]
         ev["settled_num"] = pd.to_numeric(ev["settled_actual_cases"], errors="coerce")
@@ -1946,7 +1962,8 @@ elif active_page == NAV_PAGES[2]:
             flagged = closed["is_flagged"].astype(str).str.lower() == "true"
             actual_met = closed["settled_num"] >= pd.to_numeric(closed["frozen_threshold"], errors="coerce")
             tp, fp, fn = int((flagged & actual_met).sum()), int((flagged & ~actual_met).sum()), int((~flagged & actual_met).sum())
-            avg_hr = ((pd.to_datetime(closed["check_start_time"], errors="coerce") - pd.to_datetime(closed["alert_sent_time"], errors="coerce")).dt.total_seconds() / 3600).dropna().mean()
+            hr_diff = ((pd.to_datetime(closed["check_start_time"], errors="coerce") - pd.to_datetime(closed["alert_sent_time"], errors="coerce")).dt.total_seconds() / 3600).dropna().clip(lower=0)
+            avg_hr = hr_diff.mean()
             m1_val, m2_val = ratio_text(tp, tp + fp), ratio_text(tp, tp + fn)
             m3_val, m3_note = f"รวม {tp + fp} (เกิน {fp})", f"เตือนเกิน {fp} ครั้ง"
             m4_val = f"{avg_hr:.1f} ชม." if pd.notna(avg_hr) else "ยังไม่ระบุเวลา"
@@ -2021,9 +2038,26 @@ elif active_page == NAV_PAGES[2]:
             </div>
             """)
 
+            init_date_str, init_time_str = split_check_datetime(rec["check_start_time"])
+
             with st.form("track_form", border=False):
                 c1, c2 = st.columns(2)
-                in_time = c1.text_input("1. เวลาเริ่มตรวจ (ใช้คิดความเร็ว)", value=clean_str(rec["check_start_time"]), placeholder="เช่น 2026-11-24 11:30")
+                with c1:
+                    st.markdown('<div style="font-size:14px; font-weight:500; margin-bottom:4px;">1. เวลาเริ่มตรวจ (ใช้คิดความเร็ว — เว้นว่างได้ ระบบจะใช้วันและเวลาปัจจุบันอัตโนมัติ)</div>', unsafe_allow_html=True)
+                    d_col, t_col = st.columns([1.25, 1.0], gap="small")
+                    in_date = d_col.text_input(
+                        "วันที่เริ่มตรวจ",
+                        value=init_date_str,
+                        placeholder="วว/ดด/ปปปป",
+                        label_visibility="collapsed"
+                    )
+                    in_time = t_col.text_input(
+                        "เวลาเริ่มตรวจ",
+                        value=init_time_str,
+                        placeholder="เช่น 11:30",
+                        label_visibility="collapsed"
+                    )
+
                 f_opts = ["", "พบกลุ่มก้อน", "พบการส่งย้อนหลัง", "ยังสรุปไม่ได้", "ปกติ"]
                 cur_f = clean_str(rec["field_result"])
                 in_field = c2.selectbox("2. ผลตรวจสอบภาคสนาม", f_opts, index=f_opts.index(cur_f) if cur_f in f_opts else 0)
@@ -2031,9 +2065,15 @@ elif active_page == NAV_PAGES[2]:
                 c3, c4 = st.columns(2)
                 in_action = c3.text_input("3. การดำเนินการ", value=clean_str(rec["action_taken"]), placeholder="เช่น แจ้งทีม SRRT พื้นที่ตรวจสอบซ้ำ")
                 raw_act = clean_str(rec["settled_actual_cases"])
-                in_actual = c4.text_input("4. ยอดจริงนิ่งแล้ว (กรอกเมื่อครบ 1–2 สัปดาห์)", value=str(to_int(raw_act)) if raw_act != "" else "", placeholder="จำนวนเต็ม (เว้นว่างได้หากยอดยังไม่นิ่ง)")
+                in_actual = c4.text_input("4. ยอดจริงนิ่งแล้ว (กรอกเมื่อครบ 1–2 สัปดาห์ หรือกดปุ่มดึงยอดอัตโนมัติด้านบน)", value=str(to_int(raw_act)) if raw_act != "" else "", placeholder="จำนวนเต็ม (เว้นว่างได้หากยอดยังไม่นิ่ง)")
 
                 if st.form_submit_button("บันทึกผลและอัปเดตตัวชี้วัด", type="primary"):
+                    try:
+                        combined_check_time = parse_check_datetime(in_date, in_time)
+                    except ValueError as ve:
+                        st.error(str(ve))
+                        st.stop()
+
                     actual_val = None
                     if in_actual.strip() != "":
                         try:
@@ -2044,8 +2084,8 @@ elif active_page == NAV_PAGES[2]:
                         except ValueError:
                             st.error("กรุณากรอกยอดจริงเป็นตัวเลขจำนวนเต็ม")
                             st.stop()
-                    update_registry(rec["run_id"], rec["province_code"], rec["disease_code"], rec["target_week"], in_time.strip(), in_field, in_action.strip(), actual_val)
-                    st.success("บันทึกเรียบร้อยแล้ว")
+                    update_registry(rec["run_id"], rec["province_code"], rec["disease_code"], rec["target_week"], combined_check_time, in_field, in_action.strip(), actual_val)
+                    st.success(f"บันทึกเรียบร้อยแล้ว (เวลาเริ่มตรวจ: {combined_check_time})")
                     st.rerun()
 
         render_html(f"""
