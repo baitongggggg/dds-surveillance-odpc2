@@ -1,5 +1,4 @@
 import os
-import io
 import json
 import warnings
 import numpy as np
@@ -118,9 +117,9 @@ def resolve_data_path(target_name):
     return os.path.join(BASE_DIR, target_name)
 
 
-WEEKLY_FILE = resolve_data_path("weekly_summary (1).csv")
-JSON_FILE = resolve_data_path("dashboard_data (1).json")
-CSV_REGISTRY = os.path.join(BASE_DIR, "tracking_registry (1).csv")
+WEEKLY_FILE = resolve_data_path("weekly_summary.csv")
+JSON_FILE = resolve_data_path("dashboard_data.json")
+CSV_REGISTRY = os.path.join(BASE_DIR, "tracking_registry.csv")
 
 # =========================================================
 # สไตล์เว็บแอปพลิเคชันทางการ (Enterprise Web App Architecture)
@@ -314,23 +313,6 @@ header[data-testid="stHeader"] {
     color: var(--text-muted);
     border-left: 1px solid var(--border-strong);
     padding-left: 10px;
-}
-
-/* ปุ่ม Popover อัปเดตข้อมูลให้กลมกลืนกับ Topbar */
-[data-testid="stPopover"] > button {
-    background-color: #f0fdf4 !important;
-    color: var(--primary) !important;
-    border: 1px solid #86efac !important;
-    border-radius: 8px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    padding: 0.42rem 0.95rem !important;
-    width: 100% !important;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
-}
-[data-testid="stPopover"] > button:hover {
-    background-color: #dcfce7 !important;
-    border-color: var(--primary) !important;
 }
 
 .hero-banner {
@@ -790,7 +772,7 @@ def update_registry(run_id, prov_code, disease_code, target_week, check_time, fi
 
 
 # =========================================================
-# 2. โหลดข้อมูลและประมวลผลไฟล์ Excel ที่ผ่านการคลีนแล้ว (รองรับทุกโรคอัตโนมัติ)
+# 2. โหลดข้อมูลและคำนวณพยากรณ์ (รองรับทุกโรคอัตโนมัติ)
 # =========================================================
 @st.cache_data
 def load_files():
@@ -808,98 +790,6 @@ def load_files():
     else:
         weekly["disease_name"] = weekly["disease_name"].fillna(weekly["disease_code"].map(DEFAULT_DISEASE_NAMES)).fillna(weekly["disease_code"])
     return latest_json, weekly
-
-
-def parse_thai_or_ad_date(series):
-    s = series.astype(str).str.strip()
-    dt = pd.to_datetime(s, errors="coerce")
-    mask_be = dt.dt.year > 2400
-    if mask_be.any():
-        dt.loc[mask_be] = dt.loc[mask_be] - pd.DateOffset(years=543)
-    return dt
-
-
-def process_cleaned_dds_excel(uploaded_file):
-    target_cols = [
-        "viewcode", "รหัสจังหวัดขณะป่วย", "จังหวัดขณะป่วย",
-        "epidem_report_group_code", "epidem_report_group_name",
-        "วันที่เริ่มมีอาการ", "วันที่เริ่มรักษา", "วันที่วินิจฉัยโรค",
-    ]
-    pii_keywords = ["ชื่อ", "นามสกุล", "บัตรประชาชน", "cid", "hn", "ที่อยู่", "เบอร์โทร"]
-
-    all_sheets = pd.read_excel(uploaded_file, sheet_name=None, dtype=str)
-    cleaned_list = []
-
-    for sheet_name, df_sheet in all_sheets.items():
-        df_sheet.columns = df_sheet.columns.str.strip()
-        if any(any(k in col.lower() for k in pii_keywords) for col in df_sheet.columns):
-            return "PII_DETECTED", None
-
-        avail_cols = [c for c in target_cols if c in df_sheet.columns]
-        if not avail_cols:
-            continue
-        sub = df_sheet[avail_cols].copy()
-        for c in target_cols:
-            if c not in sub.columns:
-                sub[c] = ""
-        cleaned_list.append(sub[target_cols])
-
-    if not cleaned_list:
-        return None, None
-
-    work = pd.concat(cleaned_list, ignore_index=True)
-    work["province_code"] = work["รหัสจังหวัดขณะป่วย"].astype(str).str.strip().str.extract(r"(\d+)")[0]
-    work["disease_code"] = work["epidem_report_group_code"].apply(normalize_dcode)
-    work["raw_dname"] = work["epidem_report_group_name"].astype(str).str.strip()
-
-    work = work[
-        work["province_code"].isin(ODPC2_PROVINCES.keys()) &
-        (work["disease_code"] != "") &
-        (work["disease_code"].str.lower() != "nan")
-    ].copy()
-
-    if work.empty:
-        return None, None
-
-    valid_names = work[work["raw_dname"].notna() & (work["raw_dname"] != "") & (work["raw_dname"].str.lower() != "nan")]
-    auto_dname_map = (
-        valid_names.groupby("disease_code")["raw_dname"]
-        .agg(lambda s: s.mode().iloc[0] if not s.mode().empty else s.iloc[0])
-        .to_dict()
-    )
-    for k, v in DEFAULT_DISEASE_NAMES.items():
-        auto_dname_map.setdefault(k, v)
-
-    onset_dt = parse_thai_or_ad_date(work["วันที่เริ่มมีอาการ"])
-    diag_dt = parse_thai_or_ad_date(work["วันที่วินิจฉัยโรค"])
-    work["event_date"] = onset_dt.fillna(diag_dt)
-    work = work.dropna(subset=["event_date"]).copy()
-
-    work["week_start"] = work["event_date"].dt.to_period("W-SAT").dt.start_time
-
-    agg = (
-        work.groupby(["province_code", "disease_code", "week_start"])
-        .size()
-        .reset_index(name="cases")
-    )
-    if agg.empty:
-        return None, None
-
-    detected_diseases = sorted(agg["disease_code"].unique().tolist())
-    all_weeks = pd.date_range(agg["week_start"].min(), agg["week_start"].max(), freq="W-SUN")
-
-    grid = pd.MultiIndex.from_product(
-        [list(ODPC2_PROVINCES.keys()), detected_diseases, all_weeks],
-        names=["province_code", "disease_code", "week_start"]
-    ).to_frame(index=False)
-
-    new_weekly = grid.merge(agg, on=["province_code", "disease_code", "week_start"], how="left")
-    new_weekly["cases"] = new_weekly["cases"].fillna(0).astype(int)
-    new_weekly["province_name"] = new_weekly["province_code"].map(ODPC2_PROVINCES)
-    new_weekly["disease_name"] = new_weekly["disease_code"].map(auto_dname_map).fillna(new_weekly["disease_code"])
-    new_weekly["data_status"] = "ครบถ้วน"
-
-    return "OK", new_weekly
 
 
 @st.cache_data
@@ -965,7 +855,23 @@ def predict_for_date(weekly_df, cutoff_str):
     }
 
 
+# =========================================================
+# 3. โหลดข้อมูลหลัก + แถบหน่วยงานด้านบน
+# =========================================================
+latest_json, weekly_df = load_files()
 
+render_html("""
+<div class="app-topbar">
+    <div class="app-org-wrap">
+        <span class="app-status-dot"></span>
+        <span class="app-org-name">สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก</span>
+        <span class="app-org-dept">กรมควบคุมโรค • กลุ่มระบาดวิทยาและตอบโต้ภาวะฉุกเฉินทางสาธารณสุข</span>
+    </div>
+    <div style="font-size:12px; color:#64748b; background:#f8fafc; border:1px solid #e2e8f0; padding:3px 10px; border-radius:6px;">
+        DDS Weekly Surveillance
+    </div>
+</div>
+""")
 
 # =========================================================
 # 4. แถบควบคุมด้านซ้าย (Left Navigation Rail)
@@ -974,7 +880,7 @@ min_date = pd.to_datetime("2023-11-23").date()
 max_data_dt = weekly_df["week_start"].max().date()
 max_date = max(pd.Timestamp.today().date(), max_data_dt)
 latest_cutoff = pd.to_datetime(latest_json["meta"]["cutoff_date"]).date()
-default_date = max_data_dt if "active_weekly_df" in st.session_state else min(max(latest_cutoff, min_date), max_date)
+default_date = min(max(latest_cutoff, min_date), max_date)
 
 with st.sidebar:
     render_html("""
@@ -995,10 +901,7 @@ with st.sidebar:
     )
     picked_str = picked_date.strftime("%Y-%m-%d")
 
-    if "active_weekly_df" not in st.session_state and picked_str == latest_json["meta"]["cutoff_date"]:
-        payload = latest_json
-    else:
-        payload = predict_for_date(weekly_df, picked_str)
+    payload = latest_json if picked_str == latest_json["meta"]["cutoff_date"] else predict_for_date(weekly_df, picked_str)
     sync_to_registry(payload)
 
     render_html('<div class="sb-group-label">2. เลือกจังหวัด (สคร.2)</div>')
@@ -1422,9 +1325,9 @@ with tab2:
         render_html("""
         <div class="chart-footer-note">
             <b>วิธีอ่านกราฟ (ภาพรวม 1 ปี):</b><br>
-            • <b style="color:#2563eb;">เส้นทึบสีน้ำเงิน:</b> ยอดผู้ป่วยจริงรายสัปดาห์ย้อนหลัง 52 สัปดาห์ ใช้ดูรอบฤดูกาลของโรค<br>
-            • <b style="color:#d97706;">เส้นประสีเหลือง:</b> เกณฑ์เตือนปกติ (P75) หากยอดผู้ป่วยสูงเกินเส้นนี้ถือว่าสูงกว่าเกณฑ์ปกติของพื้นที่<br>
-            • <b style="color:#be123c;">รูปดาวสีแดง (ขวาสุด):</b> ยอดคาดการณ์สัปดาห์หน้า หากดาวลอยอยู่เหนือเส้นประสีเหลือง แสดงว่าสัปดาห์หน้ามีแนวโน้มเกินเกณฑ์เตือน <i>(หมายเหตุ: แถบพื้นหลังสีเหลืองอ่อนช่วง 1–2 สัปดาห์ล่าสุด คือข้อมูลเบื้องต้นที่หน่วยบริการยังทยอยบันทึกเข้าระบบ)</i>
+- <b style="color:#2563eb;">เส้นทึบสีน้ำเงิน:</b> ยอดผู้ป่วยจริงรายสัปดาห์ย้อนหลัง 52 สัปดาห์ ใช้ดูรอบฤดูกาลของโรค<br>
+- <b style="color:#d97706;">เส้นประสีเหลือง:</b> เกณฑ์เตือนปกติ (P75) หากยอดผู้ป่วยสูงเกินเส้นนี้ถือว่าสูงกว่าเกณฑ์ปกติของพื้นที่<br>
+- <b style="color:#be123c;">รูปดาวสีแดง (ขวาสุด):</b> ยอดคาดการณ์สัปดาห์หน้า หากดาวลอยอยู่เหนือเส้นประสีเหลือง แสดงว่าสัปดาห์หน้ามีแนวโน้มเกินเกณฑ์เตือน <i>(หมายเหตุ: แถบพื้นหลังสีเหลืองอ่อนช่วง 1–2 สัปดาห์ล่าสุด คือข้อมูลเบื้องต้นที่หน่วยบริการยังทยอยบันทึกเข้าระบบ)</i>
         </div>
         """)
 
@@ -1499,8 +1402,8 @@ with tab2:
         render_html("""
         <div class="chart-footer-note">
             <b>วิธีอ่านกราฟ (ซูมระยะสั้น 3 เดือนล่าสุด):</b><br>
-            • <b style="color:#2563eb;">ตัวเลขบนจุดสีน้ำเงิน:</b> จำนวนผู้ป่วยจริงในแต่ละสัปดาห์ช่วง 12 สัปดาห์ล่าสุด<br>
-            • <b style="color:#be123c;">เส้นประสีแดงและรูปดาว:</b> แสดงทิศทางและความชันจากสัปดาห์ล่าสุดไปยังสัปดาห์เป้าหมาย เพื่อประเมินว่าสถานการณ์กำลัง <b style="color:#be123c;">ไต่ระดับเพิ่มขึ้น</b> <b style="color:#be123c;">ทรงตัว</b> หรือ <b style="color:#be123c;">เริ่มลดลง</b> เมื่อเทียบกับเส้นเกณฑ์เตือนสีเหลือง
+- <b style="color:#2563eb;">ตัวเลขบนจุดสีน้ำเงิน:</b> จำนวนผู้ป่วยจริงในแต่ละสัปดาห์ช่วง 12 สัปดาห์ล่าสุด<br>
+- <b style="color:#be123c;">เส้นประสีแดงและรูปดาว:</b> แสดงทิศทางและความชันจากสัปดาห์ล่าสุดไปยังสัปดาห์เป้าหมาย เพื่อประเมินว่าสถานการณ์กำลัง <b style="color:#be123c;">ไต่ระดับเพิ่มขึ้น</b> <b style="color:#be123c;">ทรงตัว</b> หรือ <b style="color:#be123c;">เริ่มลดลง</b> เมื่อเทียบกับเส้นเกณฑ์เตือนสีเหลือง
         </div>
         """)
 
