@@ -132,7 +132,7 @@ JSON_FILE = resolve_data_path("dashboard_data (1).json")
 CSV_REGISTRY = os.path.join(BASE_DIR, "tracking_registry (1).csv")
 
 # =========================================================
-# สไตล์ Enterprise Web Application (Clean White & Green + Google Sans)
+# สไตล์ Executive Command Center (Vibrant Public Health UI)
 # =========================================================
 render_html("""
 <style>
@@ -141,14 +141,16 @@ render_html("""
 :root {
     --brand: #006837;
     --brand-dark: #004d28;
-    --brand-light: #ecfdf5;
-    --brand-border: #a7f3d0;
-    --bg-canvas: #f8fafc;
+    --brand-mid: #059669;
+    --brand-light: #e6f4ee;
+    --brand-border: #9fd3bc;
+    --bg-canvas: #e6eeeb;
     --surface: #ffffff;
-    --border: #e2e8f0;
+    --border: #d5e0dc;
     --text-main: #0f172a;
     --text-sub: #475569;
     --text-muted: #64748b;
+    --shadow-card: 0 6px 20px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
 }
 
 html, body, [class*="css"] {
@@ -176,14 +178,14 @@ header[data-testid="stHeader"] {
 #MainMenu, footer { visibility: hidden !important; }
 
 .block-container {
-    padding-top: 0.7rem !important;
+    padding-top: 0.8rem !important;
     padding-bottom: 2.5rem !important;
     max-width: 1320px !important;
 }
 
 /* ================= SIDEBAR (NAVIGATION RAIL) ================= */
 [data-testid="stSidebar"] {
-    background-color: var(--surface);
+    background-color: #f8fbf9;
     border-right: 1px solid var(--border);
 }
 [data-testid="stSidebar"] > div:first-child {
@@ -196,18 +198,18 @@ header[data-testid="stHeader"] {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 16px;
-    background: linear-gradient(135deg, #00522b 0%, #00733d 100%);
-    border-radius: 12px;
+    padding: 15px 16px;
+    background: linear-gradient(135deg, #004d28 0%, #059669 100%);
+    border-radius: 18px;
     margin-bottom: 18px;
-    box-shadow: 0 4px 12px rgba(0, 104, 55, 0.14);
+    box-shadow: 0 8px 20px rgba(0, 104, 55, 0.22);
 }
 .sb-brand-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 9px;
-    background: rgba(255, 255, 255, 0.16);
-    border: 1px solid rgba(255, 255, 255, 0.28);
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -223,26 +225,27 @@ header[data-testid="stHeader"] {
     color: var(--brand-dark);
     background: var(--brand-light);
     border: 1px solid var(--brand-border);
-    border-radius: 8px;
-    padding: 6px 11px;
+    border-radius: 12px;
+    padding: 6px 12px;
     margin: 16px 0 8px 0;
 }
 
 [data-testid="stSidebar"] .stCheckbox {
-    padding: 3px 6px;
-    border-radius: 8px;
+    padding: 3px 8px;
+    border-radius: 10px;
     margin-bottom: -2px;
 }
 [data-testid="stSidebar"] .stCheckbox:hover {
-    background-color: #f1f5f9;
+    background-color: #e6f4ee;
 }
 
 .sb-guide {
-    background: #f8fafc;
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 15px;
+    border-radius: 18px;
+    padding: 15px 16px;
     margin-top: 18px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
 }
 .sb-guide-hdr {
     font-size: 12.5px;
@@ -250,7 +253,7 @@ header[data-testid="stHeader"] {
     color: var(--text-main);
     margin-bottom: 10px;
     padding-bottom: 7px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #eef3f1;
 }
 .sb-guide-step {
     display: flex;
@@ -263,97 +266,243 @@ header[data-testid="stHeader"] {
 }
 .sb-guide-step:last-child { margin-bottom: 0; }
 .sb-step-badge {
-    background: var(--brand);
+    background: linear-gradient(135deg, #006837 0%, #059669 100%);
     color: #ffffff;
     font-size: 10.5px;
     font-weight: 700;
-    min-width: 19px;
-    height: 19px;
-    border-radius: 5px;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-top: 2px;
 }
 
-/* ================= TOP APPLICATION HEADER ================= */
-.top-shell {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 22px;
-    margin-bottom: 14px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+/* ================= EXECUTIVE EMERALD HERO BANNER ================= */
+.exec-hero {
+    background: linear-gradient(125deg, #003d20 0%, #006837 52%, #059669 100%);
+    border-radius: 24px;
+    padding: 20px 26px;
+    margin-bottom: 16px;
+    box-shadow: 0 10px 28px rgba(0, 82, 43, 0.18);
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
 }
-.top-org-row {
+.exec-hero::after {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 70%);
+    pointer-events: none;
+}
+.exec-org-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
-    padding-bottom: 10px;
-    margin-bottom: 10px;
-    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 11px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
 }
-.org-identity {
+.exec-org-left {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
 }
-.org-pulse {
-    width: 8px;
-    height: 8px;
+.exec-live-dot {
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 0 3px #d1fae5;
+    background: #34d399;
+    box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.25);
 }
-.org-main { font-size: 13.5px; font-weight: 700; color: var(--brand); }
-.org-unit { font-size: 12px; color: var(--text-muted); border-left: 1px solid #cbd5e1; padding-left: 10px; }
-
-.app-main-title {
-    font-size: 20px;
+.exec-org-title {
+    font-size: 13.5px;
     font-weight: 700;
-    color: var(--text-main);
-    margin: 0 0 10px 0;
+    color: #ffffff;
+}
+.exec-org-dept {
+    font-size: 12px;
+    color: #a7f3d0;
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
+    padding-left: 10px;
+}
+.exec-sys-tag {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #ecfdf5;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    padding: 3px 11px;
+    border-radius: 999px;
+}
+.exec-main-title {
+    font-size: 21px;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0 0 14px 0;
     line-height: 1.35;
 }
-.meta-chips {
+.exec-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
 }
-.chip-green { background: var(--brand); color: #ffffff; padding: 4px 12px; border-radius: 7px; font-size: 12px; font-weight: 600; }
-.chip-light { background: #f8fafc; color: var(--text-sub); border: 1px solid var(--border); padding: 4px 11px; border-radius: 7px; font-size: 12px; }
-.chip-amber { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 4px 11px; border-radius: 7px; font-size: 12px; font-weight: 600; }
+.echip-gold {
+    background: #fbbf24;
+    color: #1e293b;
+    padding: 5px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+.echip-glass {
+    background: rgba(255, 255, 255, 0.13);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    padding: 5px 13px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+.echip-warn {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 5px 13px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
 
-/* ================= NATIVE METRIC CARDS & CONTAINERS ================= */
-[data-testid="stMetric"] {
-    background-color: var(--surface) !important;
-    border: 1px solid var(--border) !important;
-    border-top: 3.5px solid var(--brand) !important;
-    border-radius: 14px !important;
-    padding: 16px 20px !important;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+/* ================= COLORFUL EXECUTIVE KPI CARDS ================= */
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 15px;
+    margin: 4px 0 18px 0;
 }
-[data-testid="stMetricLabel"] {
-    font-size: 12.5px !important;
-    font-weight: 600 !important;
-    color: var(--text-muted) !important;
+.kpi-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    position: relative;
+    overflow: hidden;
 }
-[data-testid="stMetricValue"] {
-    font-size: 23px !important;
-    font-weight: 700 !important;
-    color: var(--text-main) !important;
+.kpi-tile::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 5px;
+}
+.kpi-rose::before { background: linear-gradient(180deg, #e11d48 0%, #fb7185 100%); }
+.kpi-amber::before { background: linear-gradient(180deg, #d97706 0%, #fbbf24 100%); }
+.kpi-emerald::before { background: linear-gradient(180deg, #006837 0%, #10b981 100%); }
+.kpi-sky::before { background: linear-gradient(180deg, #0284c7 0%, #38bdf8 100%); }
+
+.kpi-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.kicon-rose { background: #ffe4e6; color: #be123c; }
+.kicon-amber { background: #fef3c7; color: #b45309; }
+.kicon-emerald { background: #d1fae5; color: #047857; }
+.kicon-sky { background: #e0f2fe; color: #0369a1; }
+
+.kpi-body { flex: 1; min-width: 0; }
+.kpi-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.kpi-val {
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 4px 0 3px 0;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+}
+.kpi-sub { font-size: 12px; color: var(--text-sub); }
+
+/* ================= 5-PROVINCE REGIONAL PULSE STRIP ================= */
+.prov-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.prov-mini-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 12px 15px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+.prov-mini-alert {
+    background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%);
+    border-color: #fecdd3;
+}
+.prov-mini-ok {
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+    border-color: #bbf7d0;
+}
+.prov-mini-name { font-size: 13.5px; font-weight: 700; color: var(--text-main); }
+.prov-mini-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+.pbadge-alert {
+    background: #be123c;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.pbadge-ok {
+    background: #047857;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
 }
 
+/* ================= CONTAINERS & DATAFRAME ================= */
 [data-testid="stVerticalBlockBorderWrapper"] {
     background-color: var(--surface) !important;
     border: 1px solid var(--border) !important;
-    border-radius: 14px !important;
-    padding: 20px 24px !important;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
-    margin-bottom: 14px !important;
+    border-radius: 22px !important;
+    padding: 22px 26px !important;
+    box-shadow: var(--shadow-card) !important;
+    margin-bottom: 16px !important;
+}
+
+[data-testid="stDataFrame"] {
+    background-color: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    box-shadow: var(--shadow-card) !important;
 }
 
 .card-hdr {
@@ -369,8 +518,8 @@ header[data-testid="stHeader"] {
 
 .prov-tag {
     display: inline-block;
-    padding: 2px 9px;
-    border-radius: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
@@ -380,42 +529,42 @@ header[data-testid="stHeader"] {
 .alert-box {
     background: var(--surface);
     border: 1px solid #fecaca;
-    border-radius: 12px;
+    border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(220, 38, 38, 0.04);
-    margin-bottom: 12px;
+    box-shadow: var(--shadow-card);
+    margin-bottom: 14px;
 }
 .alert-box-hdr {
-    background: #fef2f2;
-    border-bottom: 1px solid #fecaca;
-    padding: 10px 15px;
+    background: linear-gradient(90deg, #991b1b 0%, #be123c 100%);
+    padding: 12px 18px;
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     font-size: 13.5px;
     font-weight: 700;
-    color: #991b1b;
+    color: #ffffff;
 }
-.alert-item { padding: 10px 15px; border-bottom: 1px solid #f1f5f9; }
+.alert-item { padding: 12px 18px; border-bottom: 1px solid #f1f5f9; }
 .alert-item:last-child { border-bottom: none; }
-.alert-item:first-of-type { background: #fffcfc; }
+.alert-item:first-of-type { background: #fff5f5; }
 .alert-item-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 4px; }
 .alert-item-title { font-size: 13.5px; font-weight: 700; color: var(--text-main); }
-.r-tag-1 { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 5px; white-space: nowrap; }
-.r-tag-2 { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 5px; white-space: nowrap; }
-.r-tag-3 { background: #fef9c3; color: #a16207; border: 1px solid #fde047; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 5px; white-space: nowrap; }
+.r-tag-1 { background: #be123c; color: #ffffff; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.r-tag-2 { background: #ea580c; color: #ffffff; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.r-tag-3 { background: #d97706; color: #ffffff; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
 .alert-meta-line { font-size: 12px; color: var(--text-sub); line-height: 1.5; }
 .alert-ci-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
 
 .safe-box {
-    background: var(--surface);
-    border: 1px solid #a7f3d0;
+    background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%);
+    border: 1px solid var(--brand-border);
     border-left: 5px solid var(--brand);
-    border-radius: 14px;
+    border-radius: 20px;
     padding: 18px 22px;
     color: #065f46;
     font-size: 13.5px;
     line-height: 1.65;
+    box-shadow: var(--shadow-card);
     margin-bottom: 14px;
 }
 
@@ -423,27 +572,27 @@ header[data-testid="stHeader"] {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 18px 0 10px 0;
+    margin: 20px 0 12px 0;
 }
-.sec-bar { width: 4px; height: 18px; background: var(--brand); border-radius: 3px; }
+.sec-bar { width: 5px; height: 20px; background: linear-gradient(180deg, #006837 0%, #10b981 100%); border-radius: 999px; }
 .sec-txt { font-size: 15.5px; font-weight: 700; color: var(--text-main); }
 
 .legend-inline {
-    background: #f8fafc;
+    background: #f4f8f6;
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-top: 8px;
+    border-radius: 14px;
+    padding: 13px 18px;
+    margin-top: 10px;
     font-size: 12.5px;
     color: var(--text-sub);
     line-height: 1.7;
 }
 
 .rec-bar {
-    background: #f8fafc;
+    background: #f4f8f6;
     border: 1px solid var(--border);
-    border-radius: 9px;
-    padding: 10px 14px;
+    border-radius: 14px;
+    padding: 11px 16px;
     margin: 8px 0 14px 0;
     font-size: 13px;
     color: var(--text-sub);
@@ -453,25 +602,47 @@ header[data-testid="stHeader"] {
     align-items: center;
 }
 
-/* ปุ่มกดและ Popover */
-.stButton > button[kind="primary"], .stFormSubmitButton > button {
-    background-color: var(--brand) !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 9px !important;
+/* ================= PILL NAVIGATION, INPUTS & BUTTONS ================= */
+[data-testid="stSegmentedControl"] > div {
+    background-color: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 999px !important;
+    padding: 5px !important;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, 0.04) !important;
+}
+[data-testid="stSegmentedControl"] button {
+    border-radius: 999px !important;
     font-weight: 600 !important;
 }
-.stButton > button[kind="primary"]:hover, .stFormSubmitButton > button:hover {
-    background-color: var(--brand-dark) !important;
+[data-testid="stSegmentedControl"] button[aria-checked="true"],
+[data-testid="stSegmentedControl"] button[aria-pressed="true"] {
+    background-color: var(--brand) !important;
+    color: #ffffff !important;
 }
-.stButton > button[kind="secondary"], [data-testid="stPopover"] > button {
+
+[data-baseweb="select"] > div, [data-baseweb="input"] > div {
+    border-radius: 12px !important;
+    border-color: var(--border) !important;
+}
+
+.stButton > button[kind="primary"], .stFormSubmitButton > button {
+    background: linear-gradient(135deg, #006837 0%, #059669 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 999px !important;
+    padding: 0.52rem 1.5rem !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px rgba(0, 104, 55, 0.22) !important;
+}
+.stButton > button[kind="secondary"], [data-testid="stPopover"] > button, [data-testid="stDownloadButton"] > button {
     background-color: var(--surface) !important;
     color: var(--brand) !important;
     border: 1px solid var(--brand-border) !important;
-    border-radius: 9px !important;
+    border-radius: 999px !important;
     font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
 }
-.stButton > button[kind="secondary"]:hover, [data-testid="stPopover"] > button:hover {
+.stButton > button[kind="secondary"]:hover, [data-testid="stPopover"] > button:hover, [data-testid="stDownloadButton"] > button:hover {
     background-color: var(--brand-light) !important;
     border-color: var(--brand) !important;
 }
@@ -847,25 +1018,25 @@ else:
     area_title = f"พื้นที่ที่เลือก ({len(selected_provinces_objs)} จังหวัด)"
 
 # =========================================================
-# 4. ส่วนหัวองค์กร + แถบสลับหน้าแบบ Web App Navigation
+# 4. แบนเนอร์หัวเรื่องผู้บริหาร + แถบสลับหน้า
 # =========================================================
-status_chip_cls = "chip-amber" if "เบื้องต้น" in str(meta["data_status"]) else "chip-light"
+status_chip_cls = "echip-warn" if "เบื้องต้น" in str(meta["data_status"]) else "echip-glass"
 render_html(f"""
-<div class="top-shell">
-    <div class="top-org-row">
-        <div class="org-identity">
-            <span class="org-pulse"></span>
-            <span class="org-main">สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก</span>
-            <span class="org-unit">กรมควบคุมโรค • กลุ่มระบาดวิทยาและตอบโต้ภาวะฉุกเฉินทางสาธารณสุข</span>
+<div class="exec-hero">
+    <div class="exec-org-bar">
+        <div class="exec-org-left">
+            <span class="exec-live-dot"></span>
+            <span class="exec-org-title">สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก</span>
+            <span class="exec-org-dept">กรมควบคุมโรค • กลุ่มระบาดวิทยาและตอบโต้ภาวะฉุกเฉินทางสาธารณสุข</span>
         </div>
-        <div style="font-size:12px; color:#64748b;">DDS Weekly Surveillance System</div>
+        <span class="exec-sys-tag">DDS Weekly Surveillance</span>
     </div>
-    <div class="app-main-title">ระบบชี้เป้าโรคที่ควรเฝ้าระวังสัปดาห์หน้าจากข้อมูล DDS — {area_title}</div>
-    <div class="meta-chips">
-        <span class="chip-green">สัปดาห์เป้าหมาย: {meta['target_week']}</span>
-        <span class="chip-light">ขอบเขตโรค: <b>{disease_scope_text}</b></span>
-        <span class="chip-light">ตัดข้อมูลถึง: <b>{meta['cutoff_date']}</b></span>
-        <span class="chip-light">รหัสรอบ: <b>{meta['run_id']}</b></span>
+    <div class="exec-main-title">ระบบชี้เป้าโรคที่ควรเฝ้าระวังสัปดาห์หน้าจากข้อมูล DDS — {area_title}</div>
+    <div class="exec-chips">
+        <span class="echip-gold">สัปดาห์เป้าหมาย: {meta['target_week']}</span>
+        <span class="echip-glass">ขอบเขตโรค: <b>{disease_scope_text}</b></span>
+        <span class="echip-glass">ตัดข้อมูลถึง: <b>{meta['cutoff_date']}</b></span>
+        <span class="echip-glass">รหัสรอบ: <b>{meta['run_id']}</b></span>
         <span class="{status_chip_cls}">สถานะข้อมูล: {meta['data_status']}</span>
     </div>
 </div>
@@ -901,50 +1072,108 @@ if active_page == NAV_PAGES[0]:
     total_fc = sum(to_int(d["forecast"]) for d in view_items)
     total_latest = sum(to_int(d["latest_cases"]) for d in view_items)
     diff_total = total_fc - total_latest
+    diff_txt = f"+{diff_total:,} ราย จากสัปดาห์ล่าสุด" if diff_total >= 0 else f"{diff_total:,} ราย จากสัปดาห์ล่าสุด"
 
     if top_alerts:
         t1 = top_alerts[0]
         top_risk_name = f"{t1['disease_name']}"
         prov_prefix = f"จ.{t1['province_name']} • " if is_all_prov else ""
-        top_risk_delta = f"{prov_prefix}คาด {to_int(t1['forecast']):,} ราย (เกณฑ์ {to_int(t1['threshold']):,})"
+        top_risk_sub = f"{prov_prefix}คาด {to_int(t1['forecast']):,} ราย (เกณฑ์ {to_int(t1['threshold']):,})"
     else:
-        top_risk_name, top_risk_delta = "ปกติทุกโรค", "ไม่พบรายการเกินเกณฑ์ P75"
+        top_risk_name, top_risk_sub = "ปกติทุกโรค", "ไม่พบรายการเกินเกณฑ์ P75"
 
     if is_all_prov:
         flagged_provs_cnt = len({d["province_code"] for d in flagged_items})
         kpi1_val = f"พบเตือน {flagged_provs_cnt} จังหวัด" if flagged_provs_cnt > 0 else "ปกติทุกจังหวัด"
-        kpi1_delta = f"เกินเกณฑ์ {len(flagged_items)}/{len(view_items)} รายการ"
+        kpi1_sub = f"เกินเกณฑ์ {len(flagged_items)} จาก {len(view_items)} รายการ"
     else:
         kpi1_val = f"เกินเกณฑ์ {len(flagged_items)} โรค" if len(flagged_items) > 0 else "ปกติทุกโรค"
-        kpi1_delta = f"เฝ้าระวังทั้งหมด {len(view_items)} โรค"
+        kpi1_sub = f"เฝ้าระวังทั้งหมด {len(view_items)} โรค"
 
-    k1, k2, k3, k4 = st.columns(4, gap="medium")
-    k1.metric(
-        label="พื้นที่และโรคที่ต้องเฝ้าระวัง",
-        value=kpi1_val,
-        delta=kpi1_delta,
-        delta_color="inverse" if len(flagged_items) > 0 else "off"
-    )
-    k2.metric(
-        label="ต้องระวังเป็นอันดับที่ 1",
-        value=top_risk_name,
-        delta=top_risk_delta,
-        delta_color="inverse" if top_alerts else "off"
-    )
-    k3.metric(
-        label="ยอดคาดการณ์รวมสัปดาห์หน้า",
-        value=f"{total_fc:,} ราย",
-        delta=f"{diff_total:+,} ราย จากสัปดาห์ล่าสุด",
-        delta_color="inverse" if diff_total > 0 else "normal"
-    )
-    k4.metric(
-        label="ยอดผู้ป่วยจริงรวม (สัปดาห์ล่าสุด)",
-        value=f"{total_latest:,} ราย",
-        delta=f"ณ วันที่ {meta['cutoff_date']}",
-        delta_color="off"
-    )
+    k1_cls = "kpi-rose" if len(flagged_items) > 0 else "kpi-emerald"
+    k1_ic = "kicon-rose" if len(flagged_items) > 0 else "kicon-emerald"
+    k1_val_color = "#be123c" if len(flagged_items) > 0 else "#047857"
 
-    col_chart, col_action = st.columns([1.28, 1.0], gap="medium")
+    render_html(f"""
+    <div class="kpi-row">
+        <div class="kpi-tile {k1_cls}">
+            <div class="kpi-icon-box {k1_ic}">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-lbl">พื้นที่และโรคที่ต้องเฝ้าระวัง</div>
+                <div class="kpi-val" style="color:{k1_val_color};">{kpi1_val}</div>
+                <div class="kpi-sub">{kpi1_sub}</div>
+            </div>
+        </div>
+        <div class="kpi-tile kpi-amber">
+            <div class="kpi-icon-box kicon-amber">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-lbl">ต้องระวังเป็นอันดับที่ 1</div>
+                <div class="kpi-val" style="font-size:17.5px; color:#b45309;">{top_risk_name}</div>
+                <div class="kpi-sub">{top_risk_sub}</div>
+            </div>
+        </div>
+        <div class="kpi-tile kpi-emerald">
+            <div class="kpi-icon-box kicon-emerald">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-lbl">ยอดคาดการณ์รวมสัปดาห์หน้า</div>
+                <div class="kpi-val">{total_fc:,} ราย</div>
+                <div class="kpi-sub">{diff_txt}</div>
+            </div>
+        </div>
+        <div class="kpi-tile kpi-sky">
+            <div class="kpi-icon-box kicon-sky">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-lbl">ยอดผู้ป่วยจริงรวม (สัปดาห์ล่าสุด)</div>
+                <div class="kpi-val">{total_latest:,} ราย</div>
+                <div class="kpi-sub">ข้อมูล ณ วันที่ {meta['cutoff_date']}</div>
+            </div>
+        </div>
+    </div>
+    """)
+
+    # แถบสถานะรายจังหวัดทั้ง 5 จังหวัด (ODPC 2 Regional Pulse)
+    if is_all_prov:
+        prov_cards_html = []
+        for p in selected_provinces_objs:
+            p_items = [d for d in p["all_diseases"] if d["disease_code"] in selected_disease_codes]
+            p_flagged = sorted([d for d in p_items if d["is_flagged"]], key=risk_sort_key, reverse=True)
+            if p_flagged:
+                top_p = p_flagged[0]
+                card_cls = "prov-mini-card prov-mini-alert"
+                badge_html = f'<span class="pbadge-alert">เตือน {len(p_flagged)} โรค</span>'
+                sub_txt = f"สูงสุด: {top_p['disease_name']}"
+            else:
+                card_cls = "prov-mini-card prov-mini-ok"
+                badge_html = '<span class="pbadge-ok">ปกติ</span>'
+                sub_txt = "ต่ำกว่าเกณฑ์ทุกรายการ"
+            prov_cards_html.append(f"""
+            <div class="{card_cls}">
+                <div>
+                    <div class="prov-mini-name">จ.{p['province_name']}</div>
+                    <div class="prov-mini-sub">{sub_txt}</div>
+                </div>
+                {badge_html}
+            </div>
+            """)
+        render_html(f'<div class="prov-strip">{"".join(prov_cards_html)}</div>')
+
+    col_chart, col_action = st.columns([1.48, 1.0], gap="medium")
 
     with col_chart:
         with st.container(border=True):
@@ -1020,7 +1249,7 @@ if active_page == NAV_PAGES[0]:
                 fc_i, th_i, lt_i = to_int(item["forecast"]), to_int(item["threshold"]), to_int(item["latest_cases"])
                 lo_i, hi_i, diff = to_int(item["pi_low"]), to_int(item["pi_high"]), fc_i - th_i
                 pt = get_prov_theme(item["province_code"])
-                prov_pill = f'<span class="prov-tag" style="background:{pt["bg"]}; color:{pt["color"]}; border:1px solid {pt["border"]}; margin-right:6px;">จ.{item["province_name"]}</span>' if is_all_prov else ""
+                prov_pill = f'<span class="prov-tag" style="background:{pt["bg"]}; color:{pt["color"]}; border:1px solid {pt["border"]}; margin-right:5px; font-size:11px; padding:1px 7px;">จ.{item["province_name"]}</span>' if is_all_prov else ""
                 b_cls = badge_classes[min(i, 2)]
 
                 items_html.append(f"""
@@ -1029,18 +1258,17 @@ if active_page == NAV_PAGES[0]:
                         <div>{prov_pill}<span class="alert-item-title">{item['disease_name']}</span></div>
                         <span class="{b_cls}">อันดับ #{i+1}</span>
                     </div>
-                    <ul class="alert-ul">
-                        <li>ยอดคาดสัปดาห์หน้า: <b style="color:#be123c;">{fc_i:,} ราย</b> <span style="color:#64748b; font-size:12px;">(ช่วง 95%: {lo_i:,}–{hi_i:,} ราย)</span></li>
-                        <li>เกณฑ์เตือนปกติ: <b>{th_i:,} ราย</b> <span style="color:#be123c; font-weight:600;">(เกินเกณฑ์ +{diff:,} ราย)</span></li>
-                        <li>ยอดจริงสัปดาห์ล่าสุด: <b>{lt_i:,} ราย</b></li>
-                    </ul>
+                    <div class="alert-meta-line">
+                        คาดสัปดาห์หน้า <b style="color:#be123c;">{fc_i:,} ราย</b> <span style="color:#be123c; font-weight:600;">(+{diff:,})</span> • เกณฑ์ <b>{th_i:,}</b> • ล่าสุด <b>{lt_i:,}</b>
+                    </div>
+                    <div class="alert-ci-sub">ช่วงคาดการณ์ 95%: {lo_i:,}–{hi_i:,} ราย</div>
                 </div>
                 """)
 
             render_html(f"""
             <div class="alert-box">
                 <div class="alert-box-hdr">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/>
                         <line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -1051,7 +1279,7 @@ if active_page == NAV_PAGES[0]:
             </div>
             """)
 
-    # ตารางข้อมูลแบบ Interactive Enterprise Data Grid (st.dataframe + st.column_config)
+    # ตารางข้อมูลแบบ Interactive Enterprise Data Grid
     render_html("""
     <div class="sec-hdr">
         <div class="sec-bar"></div>
@@ -1063,10 +1291,7 @@ if active_page == NAV_PAGES[0]:
     for rank_idx, d in enumerate(view_items, start=1):
         fc_i, th_i, lt_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"])
         pct_of_th = int(round((fc_i / th_i) * 100)) if th_i > 0 else (100 if fc_i > 0 else 0)
-        spark_vals = [
-            to_int(h["cases"], 0)
-            for h in d.get("history", [])[-12:]
-        ] + [fc_i]
+        spark_vals = [to_int(h["cases"], 0) for h in d.get("history", [])[-12:]] + [fc_i]
 
         row_dict = {
             "อันดับ": rank_idx,
@@ -1151,21 +1376,55 @@ elif active_page == NAV_PAGES[1]:
     fc_i, th_i, lt_i, lo_i, hi_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"]), to_int(d["pi_low"]), to_int(d["pi_high"])
     diff_wk = fc_i - lt_i
 
-    m1, m2, m3, m4 = st.columns(4, gap="medium")
-    m1.metric("ยอดจริงสัปดาห์ล่าสุด", f"{lt_i:,} ราย")
-    m2.metric(
-        f"พยากรณ์สัปดาห์เป้าหมาย ({d['target_week']})",
-        f"{fc_i:,} ราย",
-        delta=f"ช่วง 95%: {lo_i:,} – {hi_i:,} ราย",
-        delta_color="off"
-    )
-    m3.metric("เกณฑ์เตือนรายโรค (P75)", f"{th_i:,} ราย")
-    m4.metric(
-        "ผลการเทียบเกณฑ์",
-        "เกินเกณฑ์เตือน" if d["is_flagged"] else "ต่ำกว่าเกณฑ์ (ปกติ)",
-        delta=f"{diff_wk:+,} ราย จากสัปดาห์ล่าสุด",
-        delta_color="inverse" if d["is_flagged"] else "normal"
-    )
+    st_cls = "kpi-rose" if d["is_flagged"] else "kpi-emerald"
+    st_ic = "kicon-rose" if d["is_flagged"] else "kicon-emerald"
+    st_val_c = "#be123c" if d["is_flagged"] else "#047857"
+    st_txt = "เกินเกณฑ์เตือน" if d["is_flagged"] else "ต่ำกว่าเกณฑ์ (ปกติ)"
+
+    render_html(f"""
+    <div class="kpi-row">
+        <div class="kpi-tile kpi-sky">
+            <div class="kpi-icon-box kicon-sky">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-lbl">ยอดจริงสัปดาห์ล่าสุด</div>
+                <div class="kpi-val">{lt_i:,} ราย</div>
+                <div class="kpi-sub">ฐานข้อมูลปัจจุบัน</div>
+            </div>
+        </div>
+        <div class="kpi-tile {st_cls}">
+            <div class="kpi-icon-box {st_ic}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-lbl">พยากรณ์สัปดาห์เป้าหมาย ({d['target_week']})</div>
+                <div class="kpi-val" style="color:{st_val_c};">{fc_i:,} ราย</div>
+                <div class="kpi-sub">ช่วง 95%: {lo_i:,} – {hi_i:,} ราย</div>
+            </div>
+        </div>
+        <div class="kpi-tile kpi-amber">
+            <div class="kpi-icon-box kicon-amber">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-lbl">เกณฑ์เตือนรายโรค (P75)</div>
+                <div class="kpi-val">{th_i:,} ราย</div>
+                <div class="kpi-sub">เส้นมาตรฐานเฝ้าระวัง</div>
+            </div>
+        </div>
+        <div class="kpi-tile {st_cls}">
+            <div class="kpi-icon-box {st_ic}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-lbl">ผลการเทียบเกณฑ์</div>
+                <div class="kpi-val" style="font-size:18px; color:{st_val_c};">{st_txt}</div>
+                <div class="kpi-sub">{diff_wk:+,} ราย จากสัปดาห์ล่าสุด</div>
+            </div>
+        </div>
+    </div>
+    """)
 
     hist = pd.DataFrame(d["history"])
     hist["week_dt"] = pd.to_datetime(hist["week"])
@@ -1228,11 +1487,11 @@ elif active_page == NAV_PAGES[1]:
         first_dt_12 = hist_12["week_dt"].iloc[0]
 
         if diff_wk > 0:
-            trend_pill = f'<span style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; padding:4px 12px; border-radius:8px; font-weight:700; font-size:12.5px;">สัปดาห์หน้าคาดว่าเพิ่มขึ้น +{diff_wk:,} ราย</span>'
+            trend_pill = f'<span style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; padding:5px 13px; border-radius:999px; font-weight:700; font-size:12.5px;">สัปดาห์หน้าคาดว่าเพิ่มขึ้น +{diff_wk:,} ราย</span>'
         elif diff_wk < 0:
-            trend_pill = f'<span style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; padding:4px 12px; border-radius:8px; font-weight:700; font-size:12.5px;">สัปดาห์หน้าคาดว่าลดลง {diff_wk:,} ราย</span>'
+            trend_pill = f'<span style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; padding:5px 13px; border-radius:999px; font-weight:700; font-size:12.5px;">สัปดาห์หน้าคาดว่าลดลง {diff_wk:,} ราย</span>'
         else:
-            trend_pill = '<span style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:4px 12px; border-radius:8px; font-weight:700; font-size:12.5px;">สัปดาห์หน้าคาดว่าทรงตัว (0 ราย)</span>'
+            trend_pill = '<span style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:5px 13px; border-radius:999px; font-weight:700; font-size:12.5px;">สัปดาห์หน้าคาดว่าทรงตัว (0 ราย)</span>'
 
         render_html(f"""
         <div class="card-hdr">
@@ -1334,11 +1593,50 @@ elif active_page == NAV_PAGES[2]:
             m3_val, m3_note = f"รวม {tp + fp} (เกิน {fp})", f"เตือนเกิน {fp} ครั้ง"
             m4_val = f"{avg_hr:.1f} ชม." if pd.notna(avg_hr) else "ยังไม่ระบุเวลา"
 
-        c1_m, c2_m, c3_m, c4_m = st.columns(4, gap="medium")
-        c1_m.metric("1. ความแม่นของสัญญาณ (Precision)", m1_val, delta="เตือนแล้วเข้าเกณฑ์จริง", delta_color="off")
-        c2_m.metric("2. ความครอบคลุม (Recall)", m2_val, delta="จับเหตุการณ์พุ่งเกินเกณฑ์", delta_color="off")
-        c3_m.metric("3. ภาระการตรวจสอบ", m3_val, delta=m3_note, delta_color="off")
-        c4_m.metric("4. ความเร็วในการเริ่มตรวจ", m4_val, delta="จากเวลาส่งสัญญาณ", delta_color="off")
+        render_html(f"""
+        <div class="kpi-row">
+            <div class="kpi-tile kpi-emerald">
+                <div class="kpi-icon-box kicon-emerald">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                </div>
+                <div class="kpi-body">
+                    <div class="kpi-lbl">1. ความแม่นของสัญญาณ (Precision)</div>
+                    <div class="kpi-val">{m1_val}</div>
+                    <div class="kpi-sub">เตือนแล้วเข้าเกณฑ์จริง</div>
+                </div>
+            </div>
+            <div class="kpi-tile kpi-sky">
+                <div class="kpi-icon-box kicon-sky">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div class="kpi-body">
+                    <div class="kpi-lbl">2. ความครอบคลุม (Recall)</div>
+                    <div class="kpi-val">{m2_val}</div>
+                    <div class="kpi-sub">จับเหตุการณ์พุ่งเกินเกณฑ์</div>
+                </div>
+            </div>
+            <div class="kpi-tile kpi-amber">
+                <div class="kpi-icon-box kicon-amber">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div class="kpi-body">
+                    <div class="kpi-lbl">3. ภาระการตรวจสอบ</div>
+                    <div class="kpi-val">{m3_val}</div>
+                    <div class="kpi-sub">{m3_note}</div>
+                </div>
+            </div>
+            <div class="kpi-tile kpi-rose">
+                <div class="kpi-icon-box kicon-rose">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <div class="kpi-body">
+                    <div class="kpi-lbl">4. ความเร็วในการเริ่มตรวจ</div>
+                    <div class="kpi-val">{m4_val}</div>
+                    <div class="kpi-sub">จากเวลาส่งสัญญาณ</div>
+                </div>
+            </div>
+        </div>
+        """)
 
         with st.container(border=True):
             render_html("""
