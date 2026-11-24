@@ -1264,10 +1264,11 @@ with tab1:
     for rank_idx, d in enumerate(view_items, start=1):
         fc_i, th_i, lt_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"])
         diff = fc_i - th_i
-        badge = (
-            f'<span class="badge-red">เฝ้าระวัง (+{diff:,})</span>'
+        badge = '<span class="badge-red">เฝ้าระวัง</span>' if d["is_flagged"] else '<span class="badge-ok">ปกติ</span>'
+        diff_txt = (
+            f'<span style="color:#be123c; font-weight:700;">+{diff:,}</span>'
             if d["is_flagged"]
-            else '<span class="badge-ok">ปกติ</span>'
+            else f'<span class="muted">{diff:,}</span>'
         )
 
         pt = get_prov_theme(d["province_code"])
@@ -1281,6 +1282,7 @@ with tab1:
             <td class="num">{lt_i:,}</td>
             <td class="num"><b>{fc_i:,}</b></td>
             <td class="num">{th_i:,}</td>
+            <td class="num">{diff_txt}</td>
             <td class="ctr">{badge}</td>
         </tr>
         """)
@@ -1291,7 +1293,9 @@ with tab1:
             <tr>
                 <th class="ctr">อันดับ</th>{prov_th}<th>กลุ่มโรคเฝ้าระวัง</th>
                 <th class="num">ยอดล่าสุด</th><th class="num">คาดสัปดาห์หน้า</th>
-                <th class="num">เกณฑ์เตือน (P75)</th><th class="ctr">สถานะ</th>
+                <th class="num">เกณฑ์เตือน (P75)</th>
+                <th class="num">ส่วนต่างจากเกณฑ์ (ราย)<br><span style="font-weight:400; font-size:11px; color:#64748b;">(คาดสัปดาห์หน้า − เกณฑ์ P75)</span></th>
+                <th class="ctr">สถานะ</th>
             </tr>
         </thead>
         <tbody>{"".join(rows_html)}</tbody>
