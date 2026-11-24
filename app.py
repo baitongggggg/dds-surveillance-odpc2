@@ -457,15 +457,14 @@ div[data-baseweb="select"] > div,
     border: 1px solid #d1d5db;
     border-top: 2px solid #e2e8f0;
     border-radius: 0 0 10px 10px;
-    padding: 11px 16px;
+    padding: 12px 16px;
     margin-top: -14px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
     font-size: 12.5px;
     color: #374151;
-    line-height: 1.65;
+    line-height: 1.7;
 }
-.chart-caption b { color: #00522b; }
-
+.chart-caption b { color: #00522b; }  
 .portal-footer {
     margin-top: 28px;
     padding: 14px 20px;
@@ -943,12 +942,7 @@ with tab1:
         fig_ov.update_xaxes(showgrid=True, gridcolor="#f1f5f9", zeroline=False, range=[0, max_x * 1.48], nticks=5, tickformat=",d", title_text="จำนวนผู้ป่วย (ราย)")
         fig_ov.update_yaxes(showgrid=False, automargin=True)
         st.plotly_chart(fig_ov, use_container_width=True)
-        render_html("""
-        <div class="chart-caption">
-            <b>วิธีอ่านกราฟ:</b> แท่งสีเทาคือ <b>เกณฑ์เตือนปกติ (P75)</b> ส่วนแท่งสีฟ้า/แดงคือ <b>ยอดคาดการณ์สัปดาห์หน้า</b><br>
-            <b>จุดสังเกต:</b> หากแท่งคาดการณ์ยาวเลยแท่งสีเทา กราฟจะเปลี่ยนเป็น <b style="color:#be123c;">สีแดง</b> เพื่อชี้เป้าให้ทีมเฝ้าระวังตรวจสอบเป็นลำดับแรก
-        </div>
-        """)
+       
 
     with col_action:
         if not top_alerts:
@@ -1116,7 +1110,15 @@ with tab2:
     )
     fig.update_xaxes(showgrid=False, tickformat="%b %Y", nticks=7, zeroline=False, automargin=True, range=[first_dt - pd.Timedelta(days=7), target_dt + pd.Timedelta(days=18)])
     fig.update_yaxes(showgrid=True, gridcolor="#eef2f6", zeroline=False, nticks=6, tickformat=",d", automargin=True, range=[-max(0.3, y_max * 0.08), y_max * 1.22], title_text="จำนวนผู้ป่วย (ราย)")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True,key="chart_52w")
+    render_html("""
+    <div class="chart-caption">
+        <b>วิธีอ่านกราฟ (ภาพรวม 1 ปี):</b><br>
+        • <b>เส้นทึบสีน้ำเงิน:</b> ยอดผู้ป่วยจริงรายสัปดาห์ย้อนหลัง 52 สัปดาห์ ใช้ดูรอบฤดูกาลของโรค<br>
+        • <b style="color:#d97706;">เส้นประสีเหลือง:</b> เกณฑ์เตือนปกติ (P75) หากยอดผู้ป่วยสูงเกินเส้นนี้ถือว่าสูงกว่าเกณฑ์ปกติของพื้นที่<br>
+        • <b style="color:#be123c;">รูปดาวสีแดง (ขวาสุด):</b> ยอดคาดการณ์สัปดาห์หน้า หากดาวลอยอยู่เหนือเส้นประสีเหลือง แสดงว่าสัปดาห์หน้ามีแนวโน้มเกินเกณฑ์เตือน <i>(หมายเหตุ: แถบพื้นหลังสีเหลืองอ่อนช่วง 1–2 สัปดาห์ล่าสุด คือข้อมูลเบื้องต้นที่หน่วยบริการยังทยอยบันทึกเข้าระบบ)</i>
+    </div>
+    """)
 # =========================================================
     # กราฟที่ 2 (ต่อจากกราฟ 1 ปี): ซูมแนวโน้ม 12 สัปดาห์ล่าสุด + พยากรณ์
     # =========================================================
@@ -1212,6 +1214,13 @@ with tab2:
         range=[-max(0.3, y_max_12 * 0.08), y_max_12 * 1.25], title_text="จำนวนผู้ป่วย (ราย)"
     )
     st.plotly_chart(fig_12w, use_container_width=True, key="chart_12w")
+    render_html("""
+    <div class="chart-caption">
+        <b>วิธีอ่านกราฟ (ซูมระยะสั้น 3 เดือนล่าสุด):</b><br>
+        • <b>ตัวเลขบนจุดสีน้ำเงิน:</b> จำนวนผู้ป่วยจริงในแต่ละสัปดาห์ช่วง 12 สัปดาห์ล่าสุด<br>
+        • <b style="color:#be123c;">เส้นประสีแดงและรูปดาว:</b> แสดงทิศทางและความชันจากสัปดาห์ล่าสุดไปยังสัปดาห์เป้าหมาย เพื่อประเมินว่าสถานการณ์กำลัง <b>ไต่ระดับเพิ่มขึ้น</b> <b>ทรงตัว</b> หรือ <b>เริ่มลดลง</b> เมื่อเทียบกับเส้นเกณฑ์เตือนสีเหลือง
+    </div>
+    """)
     
     
 
