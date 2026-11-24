@@ -452,6 +452,20 @@ div[data-baseweb="select"] > div,
 .badge-ok { background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 9px; border-radius: 5px; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .sec-label { font-size: 15px; font-weight: 600; color: #006837; margin: 16px 0 8px 0; border-left: 4px solid #006837; padding-left: 10px; }
 
+.chart-caption {
+    background: #f8fafc;
+    border: 1px solid #d1d5db;
+    border-top: 2px solid #e2e8f0;
+    border-radius: 0 0 10px 10px;
+    padding: 11px 16px;
+    margin-top: -14px;
+    margin-bottom: 14px;
+    font-size: 12.5px;
+    color: #374151;
+    line-height: 1.65;
+}
+.chart-caption b { color: #00522b; }
+
 .portal-footer {
     margin-top: 28px;
     padding: 14px 20px;
