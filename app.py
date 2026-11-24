@@ -2043,7 +2043,7 @@ elif active_page == NAV_PAGES[2]:
             with st.form("track_form", border=False):
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.markdown('<div style="font-size:14px; font-weight:500; margin-bottom:4px;">1. เวลาเริ่มตรวจ (ใช้คิดความเร็ว — เว้นว่างได้ ระบบจะใช้วันและเวลาปัจจุบันอัตโนมัติ)</div>', unsafe_allow_html=True)
+                    st.markdown('<div style="font-size:14px; font-weight:500; margin-bottom:4px;">1. เวลาเริ่มตรวจ (ใช้คิดความเร็ว)</div>', unsafe_allow_html=True)
                     d_col, t_col = st.columns([1.25, 1.0], gap="small")
                     in_date = d_col.text_input(
                         "วันที่เริ่มตรวจ",
@@ -2056,6 +2056,12 @@ elif active_page == NAV_PAGES[2]:
                         value=init_time_str,
                         placeholder="เช่น 11:30",
                         label_visibility="collapsed"
+                    )
+                    st.markdown(
+                        '<div style="font-size:12px; color:#047857; margin-top:-6px; margin-bottom:6px; line-height:1.45;">'
+                        '* <b>กรณีลืมกรอก:</b> หากเว้นว่างไว้แล้วกดบันทึก ระบบจะดึงวันและเวลาปัจจุบันของประเทศไทยให้อัตโนมัติ'
+                        '</div>',
+                        unsafe_allow_html=True
                     )
 
                 f_opts = ["", "พบกลุ่มก้อน", "พบการส่งย้อนหลัง", "ยังสรุปไม่ได้", "ปกติ"]
