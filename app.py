@@ -2039,6 +2039,12 @@ elif active_page == NAV_PAGES[2]:
             """)
 
             init_date_str, init_time_str = split_check_datetime(rec["check_start_time"])
+            if not init_date_str and not init_time_str:
+                now_th = pd.Timestamp.now(tz="Asia/Bangkok")
+                init_date_str = now_th.strftime("%d/%m/%Y")
+                init_time_str = now_th.strftime("%H:%M")
+
+            rec_uid = f"{rec['run_id']}_{rec['province_code']}_{rec['disease_code']}"
 
             with st.form("track_form", border=False):
                 c1, c2 = st.columns(2)
@@ -2049,17 +2055,19 @@ elif active_page == NAV_PAGES[2]:
                         "วันที่เริ่มตรวจ",
                         value=init_date_str,
                         placeholder="วว/ดด/ปปปป",
+                        key=f"in_d_{rec_uid}",
                         label_visibility="collapsed"
                     )
                     in_time = t_col.text_input(
                         "เวลาเริ่มตรวจ",
                         value=init_time_str,
                         placeholder="เช่น 11:30",
+                        key=f"in_t_{rec_uid}",
                         label_visibility="collapsed"
                     )
                     st.markdown(
                         '<div style="font-size:12px; color:#047857; margin-top:-6px; margin-bottom:6px; line-height:1.45;">'
-                        '* <b>กรณีลืมกรอก:</b> หากเว้นว่างไว้แล้วกดบันทึก ระบบจะดึงวันและเวลาปัจจุบันของประเทศไทยให้อัตโนมัติ'
+                        '* <b>ดึงวันและเวลาปัจจุบันให้อัตโนมัติแล้ว</b> (สามารถพิมพ์แก้ไขได้หากเริ่มตรวจคนละเวลา)'
                         '</div>',
                         unsafe_allow_html=True
                     )
