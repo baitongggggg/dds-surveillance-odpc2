@@ -1253,7 +1253,7 @@ with tab1:
                 )
             st.code(briefing_text, language=None)
 
-    render_html("""
+render_html("""
     <div class="section-bar">
         <div class="section-bar-line"></div>
         <div class="section-bar-text">ตารางสรุปตัวเลขทั้งหมด (เรียงลำดับความเสี่ยงจากมากไปน้อย)</div>
@@ -1263,9 +1263,12 @@ with tab1:
     rows_html = []
     for rank_idx, d in enumerate(view_items, start=1):
         fc_i, th_i, lt_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"])
-        lo_i, hi_i, diff = to_int(d["pi_low"]), to_int(d["pi_high"]), fc_i - th_i
-        badge = '<span class="badge-red">เฝ้าระวัง</span>' if d["is_flagged"] else '<span class="badge-ok">ปกติ</span>'
-        diff_txt = f'<span style="color:#be123c; font-weight:700;">+{diff:,}</span>' if d["is_flagged"] else f'<span style="color:#15803d;">{diff:,}</span>'
+        diff = fc_i - th_i
+        badge = (
+            f'<span class="badge-red">เฝ้าระวัง (+{diff:,})</span>'
+            if d["is_flagged"]
+            else '<span class="badge-ok">ปกติ</span>'
+        )
 
         pt = get_prov_theme(d["province_code"])
         prov_td = f'<td><span class="prov-pill" style="background:{pt["bg"]}; color:{pt["color"]};">จ.{d["province_name"]}</span></td>' if is_all_prov else ""
@@ -1277,9 +1280,7 @@ with tab1:
             <td><b>{d['disease_name']}</b> <span class="muted">({d['disease_code']})</span></td>
             <td class="num">{lt_i:,}</td>
             <td class="num"><b>{fc_i:,}</b></td>
-            <td class="num muted">{lo_i:,}–{hi_i:,}</td>
             <td class="num">{th_i:,}</td>
-            <td class="num">{diff_txt}</td>
             <td class="ctr">{badge}</td>
         </tr>
         """)
@@ -1290,8 +1291,7 @@ with tab1:
             <tr>
                 <th class="ctr">อันดับ</th>{prov_th}<th>กลุ่มโรคเฝ้าระวัง</th>
                 <th class="num">ยอดล่าสุด</th><th class="num">คาดสัปดาห์หน้า</th>
-                <th class="num">ช่วงคาดการณ์ 95%</th><th class="num">เกณฑ์เตือน</th>
-                <th class="num">ส่วนต่างเกณฑ์</th><th class="ctr">สถานะ</th>
+                <th class="num">เกณฑ์เตือน (P75)</th><th class="ctr">สถานะ</th>
             </tr>
         </thead>
         <tbody>{"".join(rows_html)}</tbody>
@@ -1652,12 +1652,3 @@ with tab3:
             </table></div>
             """)
 
-# =========================================================
-# 6. แถบท้ายเว็บไซต์ (Portal Footer)
-# =========================================================
-render_html("""
-<div class="app-footer">
-    <span>© 2026 สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก • กรมควบคุมโรค กระทรวงสาธารณสุข</span>
-    <span>ระบบสนับสนุนการตัดสินใจเฝ้าระวังโรค (DDS Weekly Surveillance Forecast)</span>
-</div>
-""")
