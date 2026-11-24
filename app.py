@@ -1287,58 +1287,6 @@ if active_page == NAV_PAGES[0]:
     </div>
     """)
 
-    table_records = []
-    for rank_idx, d in enumerate(view_items, start=1):
-        fc_i, th_i, lt_i = to_int(d["forecast"]), to_int(d["threshold"]), to_int(d["latest_cases"])
-        pct_of_th = int(round((fc_i / th_i) * 100)) if th_i > 0 else (100 if fc_i > 0 else 0)
-        spark_vals = [to_int(h["cases"], 0) for h in d.get("history", [])[-12:]] + [fc_i]
-
-        row_dict = {
-            "อันดับ": rank_idx,
-            "จังหวัด": f"จ.{d['province_name']}",
-            "กลุ่มโรคเฝ้าระวัง": f"{d['disease_name']} ({d['disease_code']})",
-            "แนวโน้ม 12 สัปดาห์": spark_vals,
-            "ยอดล่าสุด": lt_i,
-            "คาดสัปดาห์หน้า": fc_i,
-            "เกณฑ์เตือน (P75)": th_i,
-            "ระดับเทียบเกณฑ์": min(pct_of_th, 200),
-            "สถานะ": "🔴 เฝ้าระวัง" if d["is_flagged"] else "🟢 ปกติ"
-        }
-        if not is_all_prov:
-            del row_dict["จังหวัด"]
-        table_records.append(row_dict)
-
-    df_summary_grid = pd.DataFrame(table_records)
-
-    col_cfg = {
-        "อันดับ": st.column_config.NumberColumn("อันดับ", width="small", format="%d"),
-        "จังหวัด": st.column_config.TextColumn("จังหวัด", width="small"),
-        "กลุ่มโรคเฝ้าระวัง": st.column_config.TextColumn("กลุ่มโรคเฝ้าระวัง", width="medium"),
-        "แนวโน้ม 12 สัปดาห์": st.column_config.LineChartColumn(
-            "แนวโน้ม 12 สัปดาห์ + คาดการณ์",
-            width="medium",
-            help="กราฟเส้นย้อนหลัง 12 สัปดาห์จนถึงจุดพยากรณ์สัปดาห์หน้า"
-        ),
-        "ยอดล่าสุด": st.column_config.NumberColumn("ยอดล่าสุด", format="%d ราย"),
-        "คาดสัปดาห์หน้า": st.column_config.NumberColumn("คาดสัปดาห์หน้า", format="%d ราย"),
-        "เกณฑ์เตือน (P75)": st.column_config.NumberColumn("เกณฑ์เตือน (P75)", format="%d ราย"),
-        "ระดับเทียบเกณฑ์": st.column_config.ProgressColumn(
-            "สัดส่วนเทียบเกณฑ์",
-            help="100% = เท่ากับเกณฑ์เตือน P75 พอดี",
-            format="%d%%",
-            min_value=0,
-            max_value=200,
-        ),
-        "สถานะ": st.column_config.TextColumn("สถานะ", width="small"),
-    }
-
-    st.dataframe(
-        df_summary_grid,
-        column_config=col_cfg,
-        use_container_width=True,
-        hide_index=True,
-        height=min(480, 48 + len(df_summary_grid) * 38)
-    )
 
 # =========================================================
 # หน้า 2: วิเคราะห์แนวโน้มรายโรค
