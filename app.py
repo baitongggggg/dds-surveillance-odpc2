@@ -943,6 +943,12 @@ with tab1:
         fig_ov.update_xaxes(showgrid=True, gridcolor="#f1f5f9", zeroline=False, range=[0, max_x * 1.48], nticks=5, tickformat=",d", title_text="จำนวนผู้ป่วย (ราย)")
         fig_ov.update_yaxes(showgrid=False, automargin=True)
         st.plotly_chart(fig_ov, use_container_width=True)
+        render_html("""
+        <div class="chart-caption">
+            <b>วิธีอ่านกราฟ:</b> แท่งสีเทาคือ <b>เกณฑ์เตือนปกติ (P75)</b> ส่วนแท่งสีฟ้า/แดงคือ <b>ยอดคาดการณ์สัปดาห์หน้า</b><br>
+            <b>จุดสังเกต:</b> หากแท่งคาดการณ์ยาวเลยแท่งสีเทา กราฟจะเปลี่ยนเป็น <b style="color:#be123c;">สีแดง</b> เพื่อชี้เป้าให้ทีมเฝ้าระวังตรวจสอบเป็นลำดับแรก
+        </div>
+        """)
 
     with col_action:
         if not top_alerts:
