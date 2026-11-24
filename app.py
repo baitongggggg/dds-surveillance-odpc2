@@ -115,6 +115,10 @@ DEFAULT_DISEASE_NAMES = {
     "31": "โรคปอดอักเสบ"
 }
 
+# ตั้งค่าขอบเขตกลุ่มโรค: True = กรองเฉพาะ 3 โรคหลัก | False = เปิดรับทุกโรคในไฟล์ DDS อัตโนมัติ
+RESTRICT_TO_CORE_DISEASES = True
+CORE_DISEASE_CODES = {"02", "15", "31"}
+
 ODPC2_PROVINCES = {
     "65": "พิษณุโลก",
     "53": "อุตรดิตถ์",
@@ -903,6 +907,8 @@ def process_raw_dds_upload(uploaded_files, base_weekly_df=None):
     # 3. จัดมาตรฐานรหัสกลุ่มโรคเฝ้าระวัง
     df_clean["disease_code"] = df_clean["epidem_report_group_code"].apply(normalize_dcode)
     df_clean = df_clean[df_clean["disease_code"] != ""].copy()
+    if RESTRICT_TO_CORE_DISEASES:
+        df_clean = df_clean[df_clean["disease_code"].isin(CORE_DISEASE_CODES)].copy()
 
     dname_raw = df_clean["epidem_report_group_name"].fillna("").astype(str).str.strip()
     df_clean["disease_name"] = np.where(
