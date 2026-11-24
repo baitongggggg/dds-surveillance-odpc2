@@ -10,9 +10,19 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 warnings.filterwarnings("ignore")
 
+# สร้างไอคอนโล่สีเขียว-ขาวสำหรับแสดงบนแถบแท็บของเบราว์เซอร์ (Favicon)
+FAVICON_PATH = "/tmp/odpc2_shield_icon.svg"
+with open(FAVICON_PATH, "w", encoding="utf-8") as _f:
+    _f.write("""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="16" fill="#00522b"/>
+  <rect x="6" y="6" width="52" height="52" rx="12" fill="#ffffff" fill-opacity="0.14" stroke="#ffffff" stroke-opacity="0.32" stroke-width="1.5"/>
+  <path d="M32 16L18 22v11c0 9.5 6 18 14 21 8-3 14-11.5 14-21V22L32 16z" fill="none" stroke="#ffffff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M26 32.5l4.2 4.2 8.3-8.7" fill="none" stroke="#ffffff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>""")
+
 st.set_page_config(
     page_title="ระบบชี้เป้าโรคเฝ้าระวังสัปดาห์หน้า | สคร.2 จ.พิษณุโลก",
-    page_icon="🛡️",
+    page_icon=FAVICON_PATH,
     layout="wide",
     initial_sidebar_state="expanded"
 )
