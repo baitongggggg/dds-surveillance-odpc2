@@ -1253,7 +1253,7 @@ with tab1:
                 )
             st.code(briefing_text, language=None)
 
-render_html("""
+    render_html("""
     <div class="section-bar">
         <div class="section-bar-line"></div>
         <div class="section-bar-text">ตารางสรุปตัวเลขทั้งหมด (เรียงลำดับความเสี่ยงจากมากไปน้อย)</div>
