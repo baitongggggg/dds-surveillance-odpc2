@@ -5,3 +5,4 @@ plotly
 statsmodels
 SQLAlchemy
 psycopg2-binary
+openpyxl
