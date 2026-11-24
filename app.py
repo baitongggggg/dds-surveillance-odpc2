@@ -965,55 +965,7 @@ def predict_for_date(weekly_df, cutoff_str):
     }
 
 
-# =========================================================
-# 3. โหลดข้อมูลหลัก + แถบหน่วยงานด้านบนและปุ่มอัปเดตข้อมูล
-# =========================================================
-latest_json, weekly_df = load_files()
-if "active_weekly_df" in st.session_state:
-    weekly_df = st.session_state["active_weekly_df"]
 
-top_col_brand, top_col_action = st.columns([3.8, 1.2], gap="small")
-
-with top_col_brand:
-    render_html("""
-    <div class="app-topbar">
-        <div class="app-org-wrap">
-            <span class="app-status-dot"></span>
-            <span class="app-org-name">สำนักงานป้องกันควบคุมโรคที่ 2 จังหวัดพิษณุโลก</span>
-            <span class="app-org-dept">กรมควบคุมโรค • กลุ่มระบาดวิทยาและตอบโต้ภาวะฉุกเฉินทางสาธารณสุข</span>
-        </div>
-    </div>
-    """)
-
-with top_col_action:
-    with st.popover("อัปเดตข้อมูล DDS", use_container_width=True):
-        st.markdown("**นำเข้าไฟล์ Excel ที่คลีน 8 คอลัมน์แล้ว**")
-        st.caption("รองรับไฟล์ที่ผ่านแม่แบบ Excel Power Query (ตรวจจับทุกโรคในไฟล์อัตโนมัติ)")
-        up_dds = st.file_uploader(
-            "อัปโหลดไฟล์ .xlsx",
-            type=["xlsx", "xls"],
-            key="dds_cleaned_uploader",
-            label_visibility="collapsed"
-        )
-        if up_dds is not None:
-            with st.spinner("กำลังประมวลผลข้อมูล..."):
-                status_up, new_wk_df = process_cleaned_dds_excel(up_dds)
-
-            if status_up == "PII_DETECTED":
-                st.error("ตรวจพบข้อมูลส่วนบุคคลในไฟล์! กรุณาคลีนผ่าน Excel Power Query ก่อนอัปโหลด")
-            elif status_up is None or new_wk_df is None or new_wk_df.empty:
-                st.error("ไม่พบคอลัมน์ตามรูปแบบ DDS 8 คอลัมน์ กรุณาตรวจสอบไฟล์")
-            else:
-                combined_wk = pd.concat([weekly_df, new_wk_df], ignore_index=True)
-                combined_wk = combined_wk.drop_duplicates(
-                    subset=["province_code", "disease_code", "week_start"],
-                    keep="last"
-                ).sort_values(["province_code", "disease_code", "week_start"])
-                st.session_state["active_weekly_df"] = combined_wk
-                weekly_df = combined_wk
-                n_dis_found = new_wk_df["disease_code"].nunique()
-                latest_new_str = new_wk_df["week_start"].max().strftime("%Y-%m-%d")
-                st.success(f"อัปเดตสำเร็จ ({n_dis_found} โรค • ข้อมูลถึง {latest_new_str})")
 
 # =========================================================
 # 4. แถบควบคุมด้านซ้าย (Left Navigation Rail)
